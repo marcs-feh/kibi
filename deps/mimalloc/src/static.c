@@ -15,6 +15,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/internal.h"
+#include "mimalloc/atomic.h"
 
 // For a static override we create a single object file
 // containing the whole library. If it is linked first

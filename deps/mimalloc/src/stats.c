@@ -4,6 +4,7 @@ This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
+#pragma once
 #include "mimalloc.h"
 #include "mimalloc/internal.h"
 #include "mimalloc/atomic.h"
@@ -13,6 +14,25 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #pragma warning(disable:4204)  // non-constant aggregate initializer
+#endif
+
+// These are used by the statistics
+#if 0
+static inline int64_t mi_atomic_addi64_relaxed(volatile int64_t* p, int64_t add) {
+  return mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
+}
+
+static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
+  int64_t current = mi_atomic_load_relaxed((_Atomic(int64_t)*)p);
+  while (current < x && !mi_atomic_cas_weak_release((_Atomic(int64_t)*)p, &current, x)) { /* nothing */ };
+}
+
+static inline void mi_atomic_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
+  const int64_t add = mi_atomic_load_relaxed((_Atomic(int64_t)*)padd);
+  if (add != 0) {
+    mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
+  }
+}
 #endif
 
 /* -----------------------------------------------------------
@@ -59,8 +79,6 @@ void _mi_stat_increase(mi_stat_count_t* stat, size_t amount) {
 void _mi_stat_decrease(mi_stat_count_t* stat, size_t amount) {
   mi_stat_update(stat, -((int64_t)amount));
 }
-
-
 
 // must be thread safe as it is called from stats_merge
 static void mi_stat_count_add_mt(mi_stat_count_t* stat, const mi_stat_count_t* src) {

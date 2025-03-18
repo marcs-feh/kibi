@@ -96,7 +96,6 @@ static inline void mi_atomic_yield(void);
 static inline intptr_t mi_atomic_addi(_Atomic(intptr_t)*p, intptr_t add);
 static inline intptr_t mi_atomic_subi(_Atomic(intptr_t)*p, intptr_t sub);
 
-
 #if defined(__cplusplus) || !defined(_MSC_VER)
 
 // In C++/C11 atomics we have polymorphic atomics so can use the typed `ptr` variants (where `tp` is the type of atomic value)
@@ -129,12 +128,14 @@ static inline intptr_t mi_atomic_subi(_Atomic(intptr_t)*p, intptr_t sub);
 static inline int64_t mi_atomic_addi64_relaxed(volatile int64_t* p, int64_t add) {
   return mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
 }
+
 static inline void mi_atomic_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
   const int64_t add = mi_atomic_load_relaxed((_Atomic(int64_t)*)padd);
   if (add != 0) {
     mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
   }
 }
+
 static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
   int64_t current = mi_atomic_load_relaxed((_Atomic(int64_t)*)p);
   while (current < x && !mi_atomic_cas_weak_release((_Atomic(int64_t)*)p, &current, x)) { /* nothing */ };
@@ -148,7 +149,6 @@ static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
 
 #define mi_atomic_casi64_strong_acq_rel(p,e,d)  mi_atomic_cas_strong_acq_rel(p,e,d)
 #define mi_atomic_addi64_acq_rel(p,i)           mi_atomic_add_acq_rel(p,i)
-
 
 #elif defined(_MSC_VER)
 
@@ -277,6 +277,12 @@ static inline void mi_atomic_addi64_acq_rel(volatile _Atomic(int64_t*)p, int64_t
   mi_atomic_addi64_relaxed(p, i);
 }
 
+static inline void mi_atomic_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
+  const int64_t add = mi_atomic_load_relaxed((_Atomic(int64_t)*)padd);
+  if (add != 0) {
+    mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
+  }
+}
 static inline bool mi_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t*)p, int64_t* exp, int64_t des) {
   int64_t read = _InterlockedCompareExchange64(p, des, *exp);
   if (read == *exp) {
@@ -305,8 +311,8 @@ static inline bool mi_atomic_casi64_strong_acq_rel(volatile _Atomic(int64_t*)p, 
 #define mi_atomic_storei64_release(p,x) mi_atomic(storei64_explicit)(p,x,mi_memory_order(release))
 #define mi_atomic_storei64_relaxed(p,x) mi_atomic(storei64_explicit)(p,x,mi_memory_order(relaxed))
 
-
 #endif
+
 
 
 // Atomically add a signed value; returns the previous value.
