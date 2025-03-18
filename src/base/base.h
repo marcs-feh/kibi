@@ -57,7 +57,8 @@ static_assert(sizeof(void(*)(void)) == sizeof(uintptr), "Mismatched pointer type
 
 extern int printf(const char*, ...);
 
-_Noreturn void panic(char const* msg){
+static inline
+_Noreturn void panic(char const* msg) {
 	printf("Panic: %s\n", msg);
 	__builtin_trap();
 }
@@ -80,5 +81,72 @@ struct String {
 	u8 const * v;
 	isize len;
 };
+
+//// Memory
+
+static inline
+bool mem_valid_alignment(isize align){
+	return ((align & (align - 1)) == 0) && (align > 0);
+}
+
+static inline
+uintptr mem_align_forward_ptr(uintptr p, isize a){
+	ensure(mem_valid_alignment(a), "Invalid memory alignment");
+	uintptr mod = p & (a - 1);
+	if(mod != 0){
+		p += a - mod;
+	}
+	return p;
+}
+
+static inline
+isize mem_align_forward_size(isize p, isize a){
+	ensure(mem_valid_alignment(a), "Invalid memory alignment");
+	uintptr mod = p & (a - 1);
+	if(mod != 0){
+		p += a - mod;
+	}
+	return p;
+}
+
+void mem_set(void* dest, u8 val, isize count);
+
+void mem_copy(void* dest, void const* src, isize count);
+
+void mem_copy_no_overlap(void* dest, void const* src, isize count);
+
+i32 mem_compare(void const* lhs, void const* rhs, isize count);
+
+//// Arena
+typedef struct Arena Arena;
+typedef struct ArenaRegion ArenaRegion;
+
+struct Arena {
+	void*  data;
+	size_t offset;
+	size_t capacity;
+	void*  last_allocation;
+	int    region_count;
+};
+
+struct ArenaRegion {
+	Arena* arena;
+	size_t offset;
+};
+
+#define arena_make(A, Type, Count) \
+	((Type *)arena_alloc((A), sizeof(Type) * (Count), alignof(Type)))
+
+Arena arena_create(byte* buf, isize buf_size);
+
+void* arena_alloc(Arena* arena, isize size, isize align);
+
+bool arena_resize(Arena* arena, void* ptr, isize size);
+
+void arena_reset(Arena* arena);
+
+ArenaRegion arena_region_begin(Arena* a);
+
+void arena_region_end(ArenaRegion reg);
 
 

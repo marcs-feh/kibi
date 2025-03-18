@@ -73,7 +73,7 @@ function BuildKibi()
 		Append(cflags, '-fPIC')
 	end
 
-	local cmd = {config.compiler, '-o', 'kibi.exe', 'src/main.c', 'deps/mimalloc/mimalloc.o'}
+	local cmd = {config.compiler, '-o', 'kibi.exe', 'src/main.c', 'src/base/base.c', 'deps/mimalloc/mimalloc.o'}
 	Append(cmd, Unpack(cflags))
 	Append(cmd, Unpack(iflags))
 	Append(cmd, Unpack(wflags))
