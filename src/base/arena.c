@@ -1,5 +1,8 @@
 #include "base.h"
 
+// By default, use a stricter alignment
+#define ARENA_MIN_ALIGNMENT ((isize)(alignof(void*) * 2))
+
 static inline
 uintptr arena_align_forward_ptr(uintptr p, uintptr a){
 	ensure(mem_valid_alignment(a), "Alignment must be a power of 2 greater than 0");
@@ -17,10 +20,12 @@ Arena arena_create(byte* buf, isize buf_size){
 		.capacity = buf_size,
 		.last_allocation = NULL,
 		.region_count = 0,
+		.last_error = 0,
 	};
 }
 
 void* arena_alloc(Arena* a, isize size, isize align){
+	align = max(ARENA_MIN_ALIGNMENT, align);
 	uintptr base = (uintptr)a->data;
 	uintptr current = base + (uintptr)a->offset;
 
@@ -123,6 +128,13 @@ void* arena_allocator_func(
 		}
 		else {
 			result = old_ptr; /* Resize in-place successful */
+		}
+
+		/* Pad positive excess with zeros */
+		if(!error && new_size > old_size){
+			byte* buf = result;
+			isize delta = new_size - old_size;
+			mem_set(&buf[old_size], 0, delta);
 		}
 	} break;
 

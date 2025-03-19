@@ -32,8 +32,12 @@ typedef double f64;
 #define min(A, B) (((A) < (B)) ? (A) : (B))
 #define clamp(Lo, X, Hi) min(max((Lo), (X)), (Hi))
 
-#define container_of(Ptr, Type, Member) \
+#define containerof(Ptr, Type, Member) \
 	((Type *)(((void *)(Ptr)) - offsetof(Type, Member)))
+
+#define alignofexpr(Expr) (alignof(typeof(Expr)))
+
+#define memberof(Type, MemberName) ((Type){}).MemberName
 
 #if __STDC_VERSION__ < 202000L
 #undef bool
@@ -170,8 +174,8 @@ void* mem_alloc(Allocator a, isize count, isize align){
 }
 
 static inline
-void* mem_realloc(Allocator a, void* p, isize old_size, isize new_size, isize new_align){
-	return a.func(a.data, AllocatorMode_Realloc, new_size, new_align, p, old_size, 0);
+void* mem_realloc(Allocator a, void* p, isize old_size, isize old_align, isize new_size, isize new_align){
+	return a.func(a.data, AllocatorMode_Realloc, new_size, new_align, p, old_size, old_align);
 }
 
 static inline
@@ -195,6 +199,24 @@ AllocatorError mem_get_error(Allocator a){
 	uintptr err = (uintptr)a.func(a.data, AllocatorMode_GetError, 0, 0, 0, 0, 0);
 	return (AllocatorError)err;
 }
+
+#define mem_make(Allocator, T, Count) \
+	((T *)(mem_alloc((Allocator), sizeof(T) * (Count), alignof(T))))
+
+#define mem_make_array(Allocator, ArrayType, Count) \
+	(ArrayType){\
+		.v = mem_alloc((Allocator), \
+				sizeof(memberof(ArrayType, v)[0]) * (Count), \
+				alignofexpr(memberof(ArrayType, v)[0]) \
+			), \
+		.len = (Count), \
+	}
+
+#define mem_delete(Allocator, Ptr) \
+	mem_free((Allocator), Ptr, sizeof((Ptr)[0]), alignof((Ptr)[0]))
+
+#define mem_delete_array(Allocator, Arr) \
+	mem_free((Allocator), Ptr, sizeof((Arr).v[0]) * (Arr).len, alignof((Ptr)[0]))
 
 //// Arena
 typedef struct Arena Arena;
