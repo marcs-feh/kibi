@@ -15,9 +15,19 @@ function DetectSystem()
 	local c = package.config:sub(1,1)
 	if c == '\\' then
 		return 'windows'
-	else
-		error('Could not detect target system, please provide it explicitly', 2)
 	end
+
+	-- Unix like
+	local handle = io.popen('uname -s')
+	local kernel = handle:read('*a')
+	handle:close()
+
+	kernel = kernel:lower()
+	if kernel:find('linux') then
+		return 'linux'
+	end
+
+	error('Could not detect target system, please provide it explicitly', 2)
 end
 
 function FileExists(path)

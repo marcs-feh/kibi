@@ -117,6 +117,80 @@ void mem_copy_no_overlap(void* dest, void const* src, isize count);
 
 i32 mem_compare(void const* lhs, void const* rhs, isize count);
 
+typedef u8 AllocatorError;
+typedef u8 AllocatorMode;
+typedef u8 AllocatorCapability;
+
+enum AllocatorError {
+	AllocatorError_None        = 0,
+	AllocatorError_OutOfMemory = 1,
+	AllocatorError_Unsupported = 2,
+	AllocatorError_BadArgument = 3,
+	AllocatorError_UnknownMode = 4,
+};
+
+enum AllocatorMode {
+	AllocatorMode_Alloc    = 0,
+	AllocatorMode_Realloc  = 1,
+	AllocatorMode_Free     = 2,
+	AllocatorMode_FreeAll  = 3,
+	AllocatorMode_GetError = 4,
+	AllocatorMode_Query    = 5,
+};
+
+enum AllocatorCapability {
+	AllocatorCapability_Alloc    = (1 << AllocatorMode_Alloc),
+	AllocatorCapability_Realloc  = (1 << AllocatorMode_Realloc),
+	AllocatorCapability_Free     = (1 << AllocatorMode_Free),
+	AllocatorCapability_FreeAll  = (1 << AllocatorMode_FreeAll),
+	// AllocatorCapability_GetError = Always available
+ 	// AllocatorCapability_Query    = Always available
+};
+
+typedef void* (*AllocatorFunc)(
+	void* impl,
+	AllocatorMode mode,
+	isize new_size,
+	isize new_align,
+	void* old_ptr,
+	isize old_size,
+	isize old_align
+);
+
+typedef struct Allocator Allocator;
+
+struct Allocator {
+	void* data;
+	AllocatorFunc func;
+};
+
+static inline
+void* mem_alloc(Allocator a, isize count, isize align){
+	AllocatorError err = 0;
+	return a.func(a.data, AllocatorMode_Alloc, count, align, 0, 0, 0, &err);
+}
+
+static inline
+void* mem_realloc(Allocator a, void* p, isize old_size, isize old_align, isize new_size, isize new_align){
+	return a.func(a.data, AllocatorMode_Realloc, new_size, new_align, p, old_size, old_align, &a.last_error);
+}
+
+static inline
+void* mem_free(Allocator a, void* p, isize old_size){
+	return a.func(a.data, AllocatorMode_Free, 0, 0, p, old_size, 0, &a.last_error);
+}
+
+static inline
+void* mem_free_all(Allocator a){
+	return a.func(a.data, AllocatorMode_FreeAll, 0, 0, 0, 0, 0, &a.last_error);
+}
+
+static inline
+AllocatorCapability mem_query_allocator(Allocator a){
+	uintptr cap = (uintptr)a.func(a.data, AllocatorMode_Query, 0, 0, 0, 0, 0, &a.last_error);
+	return (AllocatorCapability)cap;
+}
+
 //// Arena
 typedef struct Arena Arena;
 typedef struct ArenaRegion ArenaRegion;
