@@ -1,5 +1,6 @@
 config = {
-	targetSystem = arg[1],
+	buildMode = arg[1] or 'debug',
+	targetSystem = arg[2],
 	compiler = 'clang',
 }
 
@@ -69,10 +70,16 @@ function BuildMimalloc()
 end
 
 function BuildKibi()
-	local cflags = {'-O2', '-std=c17', '-fno-strict-aliasing'}
+	local cflags = {'-std=c17', '-fno-strict-aliasing'}
 	local iflags = {'-Ideps/include', '-Isrc'}
 	local wflags = {'-Wall', '-Wextra', '-Wno-pointer-sign'}
 	local lflags = {}
+
+	if config.buildMode == 'debug' then
+		Append(cflags, '-O0', '-g', '-pipe')
+	elseif config.buildMode == 'release' then
+		Append(cflags, '-O3', '-s')
+	end
 
 	if config.targetSystem == 'windows' then
 		Append(lflags, '-ladvapi32')
@@ -95,16 +102,17 @@ end
 ---| Main |---
 do
 	--- Attempt to detect the target system
-	config.targetSystem = arg[2]
 	if not config.targetSystem  then
 		config.targetSystem = DetectSystem()
 	end
 
 	print('System: '.. config.targetSystem)
 	print('Compiler: '.. config.compiler)
+	print('Build Mode: '.. config.buildMode)
 
 	if not FileExists('deps/mimalloc/mimalloc.o') then
 		BuildMimalloc()
 	end
 	BuildKibi()
 end
+

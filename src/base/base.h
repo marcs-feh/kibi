@@ -175,13 +175,13 @@ void* mem_realloc(Allocator a, void* p, isize old_size, isize new_size, isize ne
 }
 
 static inline
-void* mem_free(Allocator a, void* p, isize old_size, isize old_align){
-	return a.func(a.data, AllocatorMode_Free, 0, 0, p, old_size, old_align);
+void mem_free(Allocator a, void* p, isize old_size, isize old_align){
+	a.func(a.data, AllocatorMode_Free, 0, 0, p, old_size, old_align);
 }
 
 static inline
-void* mem_free_all(Allocator a){
-	return a.func(a.data, AllocatorMode_FreeAll, 0, 0, 0, 0, 0);
+void mem_free_all(Allocator a){
+	a.func(a.data, AllocatorMode_FreeAll, 0, 0, 0, 0, 0);
 }
 
 static inline
@@ -201,11 +201,12 @@ typedef struct Arena Arena;
 typedef struct ArenaRegion ArenaRegion;
 
 struct Arena {
-	void*  data;
+	void* data;
 	size_t offset;
 	size_t capacity;
-	void*  last_allocation;
-	int    region_count;
+	void* last_allocation;
+	i32 region_count;
+	AllocatorError last_error;
 };
 
 struct ArenaRegion {
@@ -228,4 +229,5 @@ ArenaRegion arena_region_begin(Arena* a);
 
 void arena_region_end(ArenaRegion reg);
 
+Allocator arena_allocator(Arena* a);
 
