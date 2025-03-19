@@ -166,29 +166,34 @@ struct Allocator {
 
 static inline
 void* mem_alloc(Allocator a, isize count, isize align){
-	AllocatorError err = 0;
-	return a.func(a.data, AllocatorMode_Alloc, count, align, 0, 0, 0, &err);
+	return a.func(a.data, AllocatorMode_Alloc, count, align, 0, 0, 0);
 }
 
 static inline
-void* mem_realloc(Allocator a, void* p, isize old_size, isize old_align, isize new_size, isize new_align){
-	return a.func(a.data, AllocatorMode_Realloc, new_size, new_align, p, old_size, old_align, &a.last_error);
+void* mem_realloc(Allocator a, void* p, isize old_size, isize new_size, isize new_align){
+	return a.func(a.data, AllocatorMode_Realloc, new_size, new_align, p, old_size, 0);
 }
 
 static inline
-void* mem_free(Allocator a, void* p, isize old_size){
-	return a.func(a.data, AllocatorMode_Free, 0, 0, p, old_size, 0, &a.last_error);
+void* mem_free(Allocator a, void* p, isize old_size, isize old_align){
+	return a.func(a.data, AllocatorMode_Free, 0, 0, p, old_size, old_align);
 }
 
 static inline
 void* mem_free_all(Allocator a){
-	return a.func(a.data, AllocatorMode_FreeAll, 0, 0, 0, 0, 0, &a.last_error);
+	return a.func(a.data, AllocatorMode_FreeAll, 0, 0, 0, 0, 0);
 }
 
 static inline
 AllocatorCapability mem_query_allocator(Allocator a){
-	uintptr cap = (uintptr)a.func(a.data, AllocatorMode_Query, 0, 0, 0, 0, 0, &a.last_error);
+	uintptr cap = (uintptr)a.func(a.data, AllocatorMode_Query, 0, 0, 0, 0, 0);
 	return (AllocatorCapability)cap;
+}
+
+static inline
+AllocatorError mem_get_error(Allocator a){
+	uintptr err = (uintptr)a.func(a.data, AllocatorMode_GetError, 0, 0, 0, 0, 0);
+	return (AllocatorError)err;
 }
 
 //// Arena
