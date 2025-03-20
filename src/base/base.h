@@ -123,28 +123,6 @@ void mem_copy_no_overlap(void* dest, void const* src, isize count);
 
 i32 mem_compare(void const* lhs, void const* rhs, isize count);
 
-// #define mem_make(Arena, T, Count) \
-// 	((T *)(mem_alloc((Arena), sizeof(T) * (Count), alignof(T))))
-//
-// #define mem_make_array(Allocator, ArrayType, Count) \
-// (ArrayType){ \
-// 	.v = mem_alloc((Allocator), \
-// 			sizeof(structmember(ArrayType, v)[0]) * (Count), \
-// 			alignofexpr(structmember(ArrayType, v)[0])), \
-// 	.len = (Count), \
-// }
-//
-// #define mem_delete(Allocator, Ptr) \
-// 	mem_free((Allocator), Ptr, sizeof((Ptr)[0]), alignof((Ptr)[0]))
-//
-// #define mem_delete_array(Allocator, Arr) do { \
-// 	mem_free((Allocator), \
-// 		  (Arr).v, \
-// 		  sizeof((Arr).v[0]) * (Arr).len, \
-// 		  alignofexpr((Arr).v[0])); \
-// 	(Arr).v = 0; \
-// } while(0)
-
 //// Arena
 typedef struct Arena Arena;
 typedef struct ArenaRegion ArenaRegion;
@@ -171,10 +149,12 @@ struct ArenaRegion {
   		.len = (Count), \
 	}
 
+#define arena_make_string(A, Length) arena_make_array((A), String, (Length))
+
 #define arena_resize_array(A, ArrayPtr, NewSize) do { \
 	void* ___tmp_arr_ptr = arena_realloc( \
 		/*    Arena */ (A), \
-		/*  Pointer */ (ArrayPtr)->v, \
+		/*  Pointer */ (void*)((ArrayPtr)->v), \
 		/* Old Size */ (ArrayPtr)->len * sizeof((ArrayPtr)->v[0]), \
 		/* New size */ (NewSize) * sizeof((ArrayPtr)->v[0]), \
 		/*    Align */ alignofexpr((ArrayPtr)->v[0])); \
@@ -197,4 +177,40 @@ void arena_reset(Arena* arena);
 ArenaRegion arena_region_begin(Arena* a);
 
 void arena_region_end(ArenaRegion reg);
+
+//// UTF-8
+typedef struct UTF8EncodeResult UTF8EncodeResult;
+typedef struct UTF8DecodeResult UTF8DecodeResult;
+typedef struct UTF8Iterator UTF8Iterator;
+
+struct UTF8EncodeResult {
+	u8 bytes[4];
+	i8 len;
+};
+
+struct UTF8DecodeResult {
+	rune codepoint;
+	i8 len;
+};
+
+struct UTF8Iterator {
+	byte const* data;
+	isize len;
+	isize current;
+};
+
+bool utf8_iter_next(UTF8Iterator* iter, UTF8DecodeResult* out);
+
+bool utf8_iter_prev(UTF8Iterator* iter, UTF8DecodeResult* out);
+
+static inline
+bool utf8_continuation_byte(rune c){
+	static const rune CONTINUATION1 = 0x80;
+	static const rune CONTINUATION2 = 0xbf;
+	return (c >= CONTINUATION1) && (c <= CONTINUATION2);
+}
+
+#define UTF8_ERROR ((rune)(0xfffd))
+
+#define UTF8_ERROR_ENCODED (UTF8EncodeResult){ .bytes = {0xef, 0xbf, 0xbd}, .len = 0 }
 
