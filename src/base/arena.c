@@ -3,16 +3,6 @@
 // By default, use a stricter alignment
 #define ARENA_MIN_ALIGNMENT ((isize)(alignof(void*) * 2))
 
-static inline
-uintptr arena_align_forward_ptr(uintptr p, uintptr a){
-	ensure(mem_valid_alignment(a), "Alignment must be a power of 2 greater than 0");
-	uintptr mod = p & (a - 1); /* Fast modulo for powers of 2 */
-	if(mod > 0){
-		p += (a - mod);
-	}
-	return p;
-}
-
 Arena arena_create(byte* buf, isize buf_size){
 	return (Arena){
 		.data = buf,
@@ -20,7 +10,6 @@ Arena arena_create(byte* buf, isize buf_size){
 		.capacity = buf_size,
 		.last_allocation = NULL,
 		.region_count = 0,
-		.last_error = 0,
 	};
 }
 
@@ -47,7 +36,27 @@ void* arena_alloc(Arena* a, isize size, isize align){
 	return allocation;
 }
 
-bool arena_resize(Arena* a, void* ptr, isize new_size){
+void* arena_realloc(Arena* arena, void* ptr, isize old_size, isize new_size, isize align){
+	bool ok = arena_resize_in_place(arena, ptr, new_size);
+	isize size_diff = new_size - old_size;
+	void* new_alloc = NULL;
+
+	if(ok){
+		new_alloc = ptr;
+	}
+	else {
+		new_alloc = arena_alloc(arena, new_size, align);
+		mem_copy_no_overlap(new_alloc, ptr, min(old_size, new_size));
+	}
+
+	if(new_alloc && size_diff > 0){
+		mem_set(&new_alloc[old_size], 0, size_diff);
+	}
+
+	return new_alloc;
+}
+
+bool arena_resize_in_place(Arena* a, void* ptr, isize new_size){
 	uintptr base    = (uintptr)a->data;
 	uintptr current = base + (uintptr)a->offset;
 	uintptr limit   = base + a->capacity;
@@ -89,85 +98,4 @@ void arena_region_end(ArenaRegion reg){
 	reg.arena->offset = reg.offset;
 	reg.arena->region_count -= 1;
 }
-
-static
-void* arena_allocator_func(
-	void* impl,
-	AllocatorMode mode,
-	isize new_size,
-	isize new_align,
-	void* old_ptr,
-	isize old_size,
-	isize old_align
-){
-	Arena* a = (Arena*)impl;
-
-	void* result = NULL;
-	AllocatorError error = 0;
-
-	(void)old_align;
-
-	switch(mode){
-	case AllocatorMode_Alloc: {
-		result = arena_alloc(a, new_size, new_align);
-		if(result == NULL) {
-			error = AllocatorError_OutOfMemory;
-		}
-	} break;
-
-	case AllocatorMode_Realloc: {
-		bool ok = arena_resize(a, old_ptr, new_size);
-		if(!ok){
-			result = arena_alloc(a, new_size, new_align);
-			if(result != NULL){
-				mem_copy_no_overlap(result, old_ptr, min(old_size, new_size));
-			}
-			else {
-				error = AllocatorError_OutOfMemory;
-			}
-		}
-		else {
-			result = old_ptr; /* Resize in-place successful */
-		}
-
-		/* Pad positive excess with zeros */
-		if(!error && new_size > old_size){
-			byte* buf = result;
-			isize delta = new_size - old_size;
-			mem_set(&buf[old_size], 0, delta);
-		}
-	} break;
-
-	case AllocatorMode_Free: {
-		error = AllocatorError_Unsupported;
-	} break;
-
-	case AllocatorMode_FreeAll: {
-		arena_reset(a);
-	} break;
-
-	case AllocatorMode_GetError: {
-		uintptr err = (uintptr)a->last_error;
-		result = (void*)err;
-	} break;
-
-	case AllocatorMode_Query: {
-	} break;
-
-	default: {
-		a->last_error = AllocatorError_UnknownMode;
-	} break;
-	}
-
-	a->last_error = error;
-	return result;
-}
-
-Allocator arena_allocator(Arena* a){
-	return (Allocator){
-		.data = (void*)a,
-		.func = arena_allocator_func,
-	};
-}
-
 

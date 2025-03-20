@@ -37,7 +37,9 @@ typedef double f64;
 
 #define alignofexpr(Expr) (alignof(typeof(Expr)))
 
-#define memberof(Type, MemberName) ((Type){}).MemberName
+#define structmember(Type, MemberName) ((Type){}).MemberName
+
+#define structptrmember(Type, MemberName) ((Type){})->MemberName
 
 #if __STDC_VERSION__ < 202000L
 #undef bool
@@ -121,102 +123,27 @@ void mem_copy_no_overlap(void* dest, void const* src, isize count);
 
 i32 mem_compare(void const* lhs, void const* rhs, isize count);
 
-typedef u8 AllocatorError;
-typedef u8 AllocatorMode;
-typedef u8 AllocatorCapability;
-
-enum AllocatorError {
-	AllocatorError_None        = 0,
-	AllocatorError_OutOfMemory = 1,
-	AllocatorError_Unsupported = 2,
-	AllocatorError_BadArgument = 3,
-	AllocatorError_UnknownMode = 4,
-};
-
-enum AllocatorMode {
-	AllocatorMode_Alloc    = 0,
-	AllocatorMode_Realloc  = 1,
-	AllocatorMode_Free     = 2,
-	AllocatorMode_FreeAll  = 3,
-	AllocatorMode_GetError = 4,
-	AllocatorMode_Query    = 5,
-};
-
-enum AllocatorCapability {
-	AllocatorCapability_Alloc    = (1 << AllocatorMode_Alloc),
-	AllocatorCapability_Realloc  = (1 << AllocatorMode_Realloc),
-	AllocatorCapability_Free     = (1 << AllocatorMode_Free),
-	AllocatorCapability_FreeAll  = (1 << AllocatorMode_FreeAll),
-	// AllocatorCapability_GetError = Always available
- 	// AllocatorCapability_Query    = Always available
-};
-
-typedef void* (*AllocatorFunc)(
-	void* impl,
-	AllocatorMode mode,
-	isize new_size,
-	isize new_align,
-	void* old_ptr,
-	isize old_size,
-	isize old_align
-);
-
-typedef struct Allocator Allocator;
-
-struct Allocator {
-	void* data;
-	AllocatorFunc func;
-};
-
-static inline
-void* mem_alloc(Allocator a, isize count, isize align){
-	return a.func(a.data, AllocatorMode_Alloc, count, align, 0, 0, 0);
-}
-
-static inline
-void* mem_realloc(Allocator a, void* p, isize old_size, isize old_align, isize new_size, isize new_align){
-	return a.func(a.data, AllocatorMode_Realloc, new_size, new_align, p, old_size, old_align);
-}
-
-static inline
-void mem_free(Allocator a, void* p, isize old_size, isize old_align){
-	a.func(a.data, AllocatorMode_Free, 0, 0, p, old_size, old_align);
-}
-
-static inline
-void mem_free_all(Allocator a){
-	a.func(a.data, AllocatorMode_FreeAll, 0, 0, 0, 0, 0);
-}
-
-static inline
-AllocatorCapability mem_query_allocator(Allocator a){
-	uintptr cap = (uintptr)a.func(a.data, AllocatorMode_Query, 0, 0, 0, 0, 0);
-	return (AllocatorCapability)cap;
-}
-
-static inline
-AllocatorError mem_get_error(Allocator a){
-	uintptr err = (uintptr)a.func(a.data, AllocatorMode_GetError, 0, 0, 0, 0, 0);
-	return (AllocatorError)err;
-}
-
-#define mem_make(Allocator, T, Count) \
-	((T *)(mem_alloc((Allocator), sizeof(T) * (Count), alignof(T))))
-
-#define mem_make_array(Allocator, ArrayType, Count) \
-	(ArrayType){\
-		.v = mem_alloc((Allocator), \
-				sizeof(memberof(ArrayType, v)[0]) * (Count), \
-				alignofexpr(memberof(ArrayType, v)[0]) \
-			), \
-		.len = (Count), \
-	}
-
-#define mem_delete(Allocator, Ptr) \
-	mem_free((Allocator), Ptr, sizeof((Ptr)[0]), alignof((Ptr)[0]))
-
-#define mem_delete_array(Allocator, Arr) \
-	mem_free((Allocator), Ptr, sizeof((Arr).v[0]) * (Arr).len, alignof((Ptr)[0]))
+// #define mem_make(Arena, T, Count) \
+// 	((T *)(mem_alloc((Arena), sizeof(T) * (Count), alignof(T))))
+//
+// #define mem_make_array(Allocator, ArrayType, Count) \
+// (ArrayType){ \
+// 	.v = mem_alloc((Allocator), \
+// 			sizeof(structmember(ArrayType, v)[0]) * (Count), \
+// 			alignofexpr(structmember(ArrayType, v)[0])), \
+// 	.len = (Count), \
+// }
+//
+// #define mem_delete(Allocator, Ptr) \
+// 	mem_free((Allocator), Ptr, sizeof((Ptr)[0]), alignof((Ptr)[0]))
+//
+// #define mem_delete_array(Allocator, Arr) do { \
+// 	mem_free((Allocator), \
+// 		  (Arr).v, \
+// 		  sizeof((Arr).v[0]) * (Arr).len, \
+// 		  alignofexpr((Arr).v[0])); \
+// 	(Arr).v = 0; \
+// } while(0)
 
 //// Arena
 typedef struct Arena Arena;
@@ -228,7 +155,6 @@ struct Arena {
 	size_t capacity;
 	void* last_allocation;
 	i32 region_count;
-	AllocatorError last_error;
 };
 
 struct ArenaRegion {
@@ -239,17 +165,36 @@ struct ArenaRegion {
 #define arena_make(A, Type, Count) \
 	((Type *)arena_alloc((A), sizeof(Type) * (Count), alignof(Type)))
 
+#define arena_make_array(A, ArrayType, Count) \
+	(ArrayType){\
+  		.v = arena_alloc((A), (Count) * sizeof(structmember(ArrayType, v)[0]), alignofexpr(structmember(ArrayType, v)[0])), \
+  		.len = (Count), \
+	}
+
+#define arena_resize_array(A, ArrayPtr, NewSize) do { \
+	void* ___tmp_arr_ptr = arena_realloc( \
+		/*    Arena */ (A), \
+		/*  Pointer */ (ArrayPtr)->v, \
+		/* Old Size */ (ArrayPtr)->len * sizeof((ArrayPtr)->v[0]), \
+		/* New size */ (NewSize) * sizeof((ArrayPtr)->v[0]), \
+		/*    Align */ alignofexpr((ArrayPtr)->v[0])); \
+	if(___tmp_arr_ptr){ \
+		(ArrayPtr)->v = ___tmp_arr_ptr; \
+		(ArrayPtr)->len = (NewSize); \
+	} \
+} while(0)
+
 Arena arena_create(byte* buf, isize buf_size);
 
 void* arena_alloc(Arena* arena, isize size, isize align);
 
-bool arena_resize(Arena* arena, void* ptr, isize size);
+bool arena_resize_in_place(Arena* arena, void* ptr, isize size);
+
+void* arena_realloc(Arena* arena, void* ptr, isize old_size, isize new_size, isize align);
 
 void arena_reset(Arena* arena);
 
 ArenaRegion arena_region_begin(Arena* a);
 
 void arena_region_end(ArenaRegion reg);
-
-Allocator arena_allocator(Arena* a);
 

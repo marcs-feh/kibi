@@ -76,7 +76,7 @@ function BuildKibi()
 	local lflags = {}
 
 	if config.buildMode == 'debug' then
-		Append(cflags, '-O0', '-g', '-pipe')
+		Append(cflags, '-O0', '-g', '-pipe', '-fsanitize=address')
 	elseif config.buildMode == 'release' then
 		Append(cflags, '-O3', '-s')
 	end
@@ -90,7 +90,7 @@ function BuildKibi()
 		Append(cflags, '-fPIC')
 	end
 
-	local cmd = {config.compiler, '-o', 'kibi.exe', 'src/main.c', 'src/base/base.c', 'deps/mimalloc/mimalloc.o'}
+	local cmd = {config.compiler, '-o', 'kibi.exe', 'src/main.c', 'src/base/base.c'} -- , 'deps/mimalloc/mimalloc.o'}
 	Append(cmd, Unpack(cflags))
 	Append(cmd, Unpack(iflags))
 	Append(cmd, Unpack(wflags))
