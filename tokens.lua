@@ -8,14 +8,23 @@ delimiters = {
 
 	{'=', 'Assign'},
 	{'.', 'Dot'},
-	{';', 'Semicolon'},
 	{',', 'Comma'},
+	{':', 'Colon'},
+	{';', 'Semicolon'},
 
 	{'+', 'Plus'},
 	{'-', 'Minus'},
 	{'*', 'Star'},
 	{'/', 'Slash'},
 	{'%', 'Modulo'},
+
+	{'>>', 'ShiftRight'},
+	{'<<', 'ShiftLeft'},
+	{'&', 'And'},
+	{'|', 'Or'},
+	{'~', 'Tilde'},
+
+	{'->', 'Arrow'},
 
 	{'==', 'Equal'},
 	{'!=', 'NotEqual'},
@@ -27,6 +36,7 @@ delimiters = {
 
 keywords = {
 	'let', 'fn', 'return', 'if', 'else', 'for', 'break', 'continue',
+	'and', 'or', 'not',
 }
 
 special = {
@@ -82,4 +92,45 @@ do
 
 	lines[#lines+1] = '};'
 	print(table.concat(lines, '\n'))
+end
+
+function SortBy(list, cmp)
+	local function Partition(list, lo, hi, cmp)
+		local pivot = list[lo]
+
+		local i = lo - 1
+		local j = hi + 1
+
+		while true do
+			repeat
+				i = i + 1
+			until list[i] >= pivot
+
+			repeat
+				j = j - 1
+			until list[j] <= pivot
+
+			if i >= j then
+				return j
+			end
+
+			list[i], list[j] = list[j], list[i]
+		end
+	end
+
+	local function QuickSort(list, lo, hi, cmp)
+		if lo >= 1 && hi >= 1 && lo < hi then
+			local p = Partition(list, lo, hi)
+			QuickSort(list, lo, p)
+			QuickSort(list, p + 1, hi)
+		end
+	end
+
+	QuickSort(list, 1, #list, cmp)
+end
+
+--- Matching
+do
+	for _, tok in ipairs(sorted) do
+	end
 end
