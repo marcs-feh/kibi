@@ -76,13 +76,14 @@ function BuildKibi()
 	local lflags = {}
 
 	if config.buildMode == 'debug' then
-		Append(cflags, '-O0', '-g', '-pipe', '-fsanitize=address')
+		Append(cflags, '-O0', '-g', '-pipe')
 	elseif config.buildMode == 'release' then
 		Append(cflags, '-O3', '-s')
 	end
 
 	if config.targetSystem == 'windows' then
 		Append(lflags, '-ladvapi32')
+		Append(wflags, '-Wno-unused-command-line-argument')
 	end
 
 	if config.targetSystem == 'linux' then

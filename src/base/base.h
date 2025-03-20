@@ -140,8 +140,8 @@ struct ArenaRegion {
 	size_t offset;
 };
 
-#define arena_make(A, Type, Count) \
-	((Type *)arena_alloc((A), sizeof(Type) * (Count), alignof(Type)))
+#define arena_make(A, Type) \
+	((Type *)arena_alloc((A), sizeof(Type), alignof(Type)))
 
 #define arena_make_array(A, ArrayType, Count) \
 	(ArrayType){\
@@ -198,6 +198,10 @@ struct UTF8Iterator {
 	isize len;
 	isize current;
 };
+
+UTF8EncodeResult utf8_encode(rune c);
+
+UTF8DecodeResult utf8_decode(byte const* buf, isize len);
 
 bool utf8_iter_next(UTF8Iterator* iter, UTF8DecodeResult* out);
 

@@ -8,12 +8,13 @@ typedef struct CompilerErrorInfo CompilerErrorInfo;
 
 enum CompilerError {
 	CompilerError_None = 0,
+	CompilerError_BadCodepoint = 1,
 };
 
 struct CompilerErrorInfo {
 	CompilerError error;
 	isize offset;
-	String source;
+	String source_file;
 	CompilerErrorInfo* next;
 };
 
@@ -26,6 +27,8 @@ struct Lexer {
 	CompilerErrorInfo* error;
 };
 
+#include "tokens.gen.c"
+
 Lexer lexer_create(String source, Arena* arena){
 	return (Lexer){
 		.source = source,
@@ -36,13 +39,18 @@ Lexer lexer_create(String source, Arena* arena){
 	};
 }
 
-// rune lexer_advance(){
-// }
+void lexer_push_error(Lexer* lex, CompilerError err){
+	CompilerErrorInfo* info = arena_make(lex->arena, CompilerErrorInfo);
+	if(!info){ return; }
+
+	info->error = err;
+	info->offset = lex->current;
+	// info->source_file = lex->source_file;
+	info->next = lex->error;
+	lex->error = info;
+}
 
 int main(){
-	Arena arena = arena_create(malloc(4 * 1024), 4 * 1024);
-
-	arena_reset(&arena);
-	free(arena.data);
 	return 0;
 }
+
