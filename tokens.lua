@@ -94,8 +94,8 @@ do
 	print(table.concat(lines, '\n'))
 end
 
-function SortBy(list, cmp)
-	local function Partition(list, lo, hi, cmp)
+function Sort(list)
+	local Partition = function(list, lo, hi)
 		local pivot = list[lo]
 
 		local i = lo - 1
@@ -118,7 +118,7 @@ function SortBy(list, cmp)
 		end
 	end
 
-	local function QuickSort(list, lo, hi, cmp)
+	local QuickSort = function(list, lo, hi)
 		if lo >= 1 && hi >= 1 && lo < hi then
 			local p = Partition(list, lo, hi)
 			QuickSort(list, lo, p)
@@ -126,7 +126,7 @@ function SortBy(list, cmp)
 		end
 	end
 
-	QuickSort(list, 1, #list, cmp)
+	QuickSort(list, 1, #list)
 end
 
 --- Matching
