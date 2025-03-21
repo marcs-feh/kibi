@@ -94,8 +94,15 @@ do
 	print(table.concat(lines, '\n'))
 end
 
-function Sort(list)
-	local Partition = function(list, lo, hi)
+function Sort(list, cmpFn)
+	cmpFn = cmpFn or function(a, b)
+		if a == b then
+			return 0
+		end
+		return a > b and -1 or 1
+	end
+
+	local function Partition(list, lo, hi, cmp)
 		local pivot = list[lo]
 
 		local i = lo - 1
@@ -104,11 +111,11 @@ function Sort(list)
 		while true do
 			repeat
 				i = i + 1
-			until list[i] >= pivot
+			until cmp(list[i], pivot) >= 0
 
 			repeat
 				j = j - 1
-			until list[j] <= pivot
+			until cmp(list[j], pivot) <= 0
 
 			if i >= j then
 				return j
@@ -118,19 +125,27 @@ function Sort(list)
 		end
 	end
 
-	local QuickSort = function(list, lo, hi)
-		if lo >= 1 && hi >= 1 && lo < hi then
-			local p = Partition(list, lo, hi)
-			QuickSort(list, lo, p)
-			QuickSort(list, p + 1, hi)
+	local function QuickSort (list, lo, hi, cmp)
+		if lo >= 1 and hi >= 1 and lo < hi then
+			local p = Partition(list, lo, hi, cmp)
+			QuickSort(list, lo, p, cmp)
+			QuickSort(list, p + 1, hi, cmp)
 		end
 	end
 
-	QuickSort(list, 1, #list)
+	QuickSort(list, 1, #list, cmpFn)
 end
 
 --- Matching
 do
-	for _, tok in ipairs(sorted) do
+	Sort(delimiters, function(a, b)
+		if a[1] == b[1] then
+			return 0
+		end
+		return a[1] < b[1] and 1 or -1
+	end)
+
+	for _, tok in ipairs(delimiters) do
+		-- print(tok[1], tok[2])
 	end
 end
