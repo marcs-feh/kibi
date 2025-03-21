@@ -18,11 +18,20 @@ delimiters = {
 	{'/', 'Slash'},
 	{'%', 'Modulo'},
 
+	{'+=', 'PlusAssign'},
+	{'-=', 'MinusAssign'},
+	{'*=', 'StarAssign'},
+	{'/=', 'SlashAssign'},
+	{'%=', 'ModuloAssign'},
+
 	{'>>', 'ShiftRight'},
 	{'<<', 'ShiftLeft'},
 	{'&', 'And'},
 	{'|', 'Or'},
 	{'~', 'Tilde'},
+
+	{'&=', 'AndAssign'},
+	{'|=', 'OrAssign'},
 
 	{'->', 'Arrow'},
 
@@ -47,26 +56,50 @@ function Capitalize(s)
 	return s:sub(1, 1):upper() .. s:sub(2, #s)
 end
 
+Unpack = table.unpack
+
+function Sort(arr, cmp)
+	local n = #arr
+	for i = 2, n do
+		local key = arr[i]
+		local j = i - 1
+		while j > 0 and cmp(arr[j], key) > 0  do
+			arr[j + 1] = arr[j]
+			j = j - 1
+		end
+		arr[j + 1] = key
+	end
+	return arr
+end
+
+function Append(tbl, ...)
+	assert(type(tbl) == 'table', 'Expected table got:'.. type(tbl))
+	local items = {...}
+	for _, v in ipairs(items) do
+		tbl[#tbl+1] = v
+	end
+end
+
 --- Enum definition
 do
 	local lines = {'enum TokenType {'}
 
 	for _, tok in ipairs(special) do
 		local def = ('\tTokenType_%s,'):format(tok)
-		lines[#lines+1] = def
+		Append(lines, def)
 	end
 
 	for _, tok in ipairs(keywords) do
 		local def = ('\tTokenType_%s,'):format(Capitalize(tok))
-		lines[#lines+1] = def
+		Append(lines, def)
 	end
 
 	for _, tok in ipairs(delimiters) do
 		local def = ('\tTokenType_%s,'):format(tok[2])
-		lines[#lines+1] = def
+		Append(lines, def)
 	end
 
-	lines[#lines+1] = '};'
+	Append(lines, '};')
 
 	print(table.concat(lines, '\n'))
 end
@@ -77,75 +110,86 @@ do
 
 	for _, tok in ipairs(special) do
 		local def = ('\t[TokenType_%s] = {},'):format(tok)
-		lines[#lines+1] = def
+		Append(lines, def)
 	end
 
 	for _, tok in ipairs(delimiters) do
 		local def = ('\t[TokenType_%s] = str_literal("%s"),'):format(tok[2], tok[1])
-		lines[#lines+1] = def
+		Append(lines, def)
 	end
 
 	for _, tok in ipairs(keywords) do
 		local def = ('\t[TokenType_%s] = str_literal("%s"),'):format(Capitalize(tok), tok)
-		lines[#lines+1] = def
+		Append(lines, def)
 	end
 
-	lines[#lines+1] = '};'
+	Append(lines, '};')
 	print(table.concat(lines, '\n'))
-end
-
-function Sort(list, cmpFn)
-	cmpFn = cmpFn or function(a, b)
-		if a == b then
-			return 0
-		end
-		return a > b and -1 or 1
-	end
-
-	local function Partition(list, lo, hi, cmp)
-		local pivot = list[lo]
-
-		local i = lo - 1
-		local j = hi + 1
-
-		while true do
-			repeat
-				i = i + 1
-			until cmp(list[i], pivot) >= 0
-
-			repeat
-				j = j - 1
-			until cmp(list[j], pivot) <= 0
-
-			if i >= j then
-				return j
-			end
-
-			list[i], list[j] = list[j], list[i]
-		end
-	end
-
-	local function QuickSort (list, lo, hi, cmp)
-		if lo >= 1 and hi >= 1 and lo < hi then
-			local p = Partition(list, lo, hi, cmp)
-			QuickSort(list, lo, p, cmp)
-			QuickSort(list, p + 1, hi, cmp)
-		end
-	end
-
-	QuickSort(list, 1, #list, cmpFn)
 end
 
 --- Matching
 do
-	Sort(delimiters, function(a, b)
+	local lines = {}
+	local simpleTokenLines = {}
+	local doubleTokenLines = {}
+
+	local tokenCmp = function(a, b)
 		if a[1] == b[1] then
-			return 0
+			if #a[1] == #b[1] then
+				return 0
+			end
+			return #a[1] < #b[1] and 1 or -1
 		end
 		return a[1] < b[1] and 1 or -1
-	end)
-
-	for _, tok in ipairs(delimiters) do
-		-- print(tok[1], tok[2])
 	end
+
+	Sort(delimiters, tokenCmp)
+
+	local groups = {}
+	for _, tok in ipairs(delimiters) do
+		local key = tok[1]:sub(1,1)
+		groups[key] = groups[key] or {}
+		Append(groups[key], tok)
+		assert(#tok[1] <= 2, 'Delimiters must be 2 chars at most')
+	end
+
+	local pushToken = function(tokType)
+		return ('lexer_push_token(&lexer, TokenType_%s);'):format(tokType)
+	end
+
+	Append(lines, 'switch(c){')
+	for prefix, tokens in pairs(groups) do
+		local stmt = ("case '%s': "):format(prefix)
+		Sort(tokens, tokenCmp)
+
+		if #tokens == 1 then
+			stmt = stmt .. pushToken(tokens[1][2])
+			Append(simpleTokenLines, stmt)
+		else
+			local foundLengthOne = false
+			for i, token in ipairs(tokens) do
+				if i == 1 then
+					stmt = stmt .. ("\n\t")
+				else
+					stmt = stmt .. ('\n\telse ')
+				end
+
+				if #token[1] == 1 then
+					assert(not foundLengthOne, 'Abiguity detected')
+					foundLengthOne = true
+				else
+					stmt = stmt .. ("if(lexer_advance_match(&lexer, '%s'))"):format(token[1]:sub(2,2))
+				end
+				stmt = stmt .. '{ ' .. pushToken(token[2]) ..' }'
+			end
+			Append(doubleTokenLines, stmt, 'break;')
+		end
+	end
+
+	Append(lines, Unpack(simpleTokenLines))
+	Append(lines, Unpack(doubleTokenLines))
+	Append(lines, '}')
+
+	for _, l in ipairs(lines) do print(l) end
 end
+
