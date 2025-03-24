@@ -43,6 +43,7 @@ using uintptr = uintptr_t;
 static_assert(sizeof(usize) == sizeof(isize), "Mismatched size types");
 static_assert(sizeof(f32) == 4 && sizeof(f64) == 8, "Bad float sizes");
 static_assert(sizeof(void*) == sizeof(void(*)(void*)), "Mismatched data and function pointers");
+static_assert(sizeof(char) == sizeof(byte) && alignof(char) == alignof(byte), "Totally unsupported platform, what the fuck is this?");
 
 template<typename T>
 T min(T a, T b){
@@ -398,31 +399,39 @@ bool utf8_is_continuation_byte(rune c){
 struct String {
 	byte operator[](isize idx) const {
 		ensure_bounds_check(idx >= 0 && idx < len_, "Index to string is out of bounds");
-		return data_[idx];
+		return byte(data_[idx]);
 	}
 
 	[[nodiscard]]
 	static String from_bytes(Slice<byte> buf){
 		String s;
-		s.data_ = buf.data();
+		s.data_ = (char*)buf.data();
 		s.len_ = buf.len();
 		return s;
+	}
+
+	// NOTE: This is not guaranteed to be safe to modify
+	Slice<byte> raw_bytes(){
+		return Slice<byte>((byte*)data_, len_);
 	}
 
 	constexpr String(){}
 
 	constexpr String(char const* p)
-		: data_{bit_cast<byte const*>(p)}
-		, len_{cstring_len(p)} {}
+		: data_{p}
+		, len_{cstring_len(p)}
+	{
+	}
 
 	// Getters
 	[[nodiscard]] constexpr forceinline auto len() const { return len_; }
 	[[nodiscard]] constexpr forceinline auto data() const { return data_; }
 
 private:
-	byte const* data_ {0};
+	char const* data_ {0};
 	isize len_ {0};
 };
+
 
 } /* Universal namespace */
 
