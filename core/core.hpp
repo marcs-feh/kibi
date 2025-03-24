@@ -299,6 +299,12 @@ struct LinearIterator {
 	bool operator!=(LinearIterator const& it){ return it.data != data; }
 };
 
+template<typename A, typename B = A>
+struct Pair {
+	A a;
+	B b;
+};
+
 template<typename T>
 struct Slice {
 	T& operator[](isize idx){
@@ -309,6 +315,17 @@ struct Slice {
 	T const& operator[](isize idx) const{
 		ensure_bounds_check(idx >= 0 && idx < len_, "Index to slice is out of bounds");
 		return data_[idx];
+	}
+
+	Slice<T> operator[](Pair<isize> range) const {
+		ensure_bounds_check(
+			(range.a >= 0 && range.a <= len_) &&
+			(range.b >= 0 && range.b <= len_) &&
+			(range.b >= range.a),
+			"Improper slice range"
+		);
+
+		return Slice<T>(data_ + range.a, range.b - range.a);
 	}
 
 	Maybe<T> get(isize idx){
@@ -365,9 +382,18 @@ struct UTF8Decode {
 	u32  len;
 };
 
+u32 utf8_rune_size(rune c);
+
 UTF8Encode utf8_encode(rune c);
 
-UTF8Decode utf8_decode(byte const* buf, isize len);
+UTF8Decode utf8_decode(Slice<byte> buf);
+
+static inline
+bool utf8_is_continuation_byte(rune c){
+	constexpr rune CONTINUATION1 = 0x80;
+	constexpr rune CONTINUATION2 = 0xbf;
+	return (c >= CONTINUATION1) && (c <= CONTINUATION2);
+}
 
 struct String {
 	byte operator[](isize idx) const {

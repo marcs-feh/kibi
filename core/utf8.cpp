@@ -22,13 +22,6 @@ constexpr u32 UTF8_SIZE4 = 0xf0; /* 1111_0xxx */
 
 constexpr u32 CONT = 0x80;  /* 10xx_xxxx */
 
-static inline
-bool is_continuation_byte(rune c){
-	static const rune CONTINUATION1 = 0x80;
-	static const rune CONTINUATION2 = 0xbf;
-	return (c >= CONTINUATION1) && (c <= CONTINUATION2);
-}
-
 constexpr rune UTF8_ERROR = 0xfffd;
 
 constexpr UTF8Encode UTF8_ERROR_ENCODED = {
@@ -36,10 +29,19 @@ constexpr UTF8Encode UTF8_ERROR_ENCODED = {
 	.len = 0,
 };
 
+u32 utf8_rune_size(rune c){
+	if(0){}
+	else if(c <= UTF8_RANGE1){ return 1; }
+	else if(c <= UTF8_RANGE2){ return 2; }
+	else if(c <= UTF8_RANGE3){ return 3; }
+	else if(c <= UTF8_RANGE4){ return 4; }
+	return 0;
+}
+
 UTF8Encode utf8_encode(rune c){
 	UTF8Encode res = {};
 
-	if(is_continuation_byte(c) ||
+	if(utf8_is_continuation_byte(c) ||
 	   (c >= UTF16_SURROGATE1 && c <= UTF16_SURROGATE2) ||
 	   (c > UTF8_RANGE4))
 	{
@@ -73,8 +75,11 @@ UTF8Encode utf8_encode(rune c){
 
 static const UTF8Decode DECODE_ERROR = { .codepoint = UTF8_ERROR, .len = 1 };
 
-UTF8Decode utf8_decode(byte const* buf, isize len){
+UTF8Decode utf8_decode(Slice<byte> s){
 	UTF8Decode res = {};
+	byte const* buf = s.data();
+	isize len = s.len();
+
 	if(buf == nullptr || len <= 0){ return DECODE_ERROR; }
 
 	byte first = buf[0];
@@ -109,13 +114,13 @@ UTF8Decode utf8_decode(byte const* buf, isize len){
 	if(res.codepoint >= UTF16_SURROGATE1 && res.codepoint <= UTF16_SURROGATE2){
 		return DECODE_ERROR;
 	}
-	if(res.len > 1 && !is_continuation_byte(buf[1])){
+	if(res.len > 1 && !utf8_is_continuation_byte(buf[1])){
 		return DECODE_ERROR;
 	}
-	if(res.len > 2 && !is_continuation_byte(buf[2])){
+	if(res.len > 2 && !utf8_is_continuation_byte(buf[2])){
 		return DECODE_ERROR;
 	}
-	if(res.len > 3 && !is_continuation_byte(buf[3])){
+	if(res.len > 3 && !utf8_is_continuation_byte(buf[3])){
 		return DECODE_ERROR;
 	}
 
@@ -140,7 +145,7 @@ UTF8Decode utf8_decode(byte const* buf, isize len){
 // 	if(iter->current <= 0){ return false; }
 //
 // 	iter->current -= 1;
-// 	while(is_continuation_byte(iter->data[iter->current])){
+// 	while(utf8_is_continuation_byte(iter->data[iter->current])){
 // 		iter->current -= 1;
 // 	}
 //
