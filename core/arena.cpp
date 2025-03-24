@@ -1,6 +1,6 @@
 #include "memory.hpp"
 
-namespace x {
+namespace core {
 
 Arena Arena::create(Slice<byte> buf){
 	Arena a;

@@ -2,7 +2,7 @@
 
 // TODO: Support MSVC
 
-namespace x {
+namespace core {
 void mem_set(void* p, byte val, isize count){
 	__builtin_memset(p, val, count);
 }

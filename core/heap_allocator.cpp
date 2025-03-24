@@ -1,7 +1,7 @@
 #include "memory.hpp"
 #include <stdlib.h>
 
-namespace x {
+namespace core {
 void* heap_alloc(isize size, isize align){
 	ensure(mem_valid_alignment(align), "Invalid alignment");
 	align = max<isize>(align, alignof(void*));

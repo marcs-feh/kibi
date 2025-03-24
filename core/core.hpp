@@ -14,7 +14,7 @@
 //// Meta-programming and type trait boilerplate
 #include "meta.hpp"
 
-namespace x {
+namespace core {
 
 //// Primitive types
 using i8  = int8_t;
@@ -101,7 +101,7 @@ constexpr T&& forward(RemoveReference<T>& arg) {
 
 template<typename T, typename U = T> forceinline
 constexpr T exchange(T& obj, U&& new_val){
-	T old_val = x::move(obj);
+	T old_val = core::move(obj);
 	obj = forward<U>(new_val);
 	return old_val;
 }
@@ -141,7 +141,7 @@ template<typename T>
 struct Maybe {
 	T unwrap(){
 		if(has_value_){
-			T val = x::move(value_);
+			T val = core::move(value_);
 			has_value_ = false;
 			return val;
 		}
@@ -151,7 +151,7 @@ struct Maybe {
 	template<typename U>
 	T or_else(U&& alt){
 		if(has_value_){
-			T val = x::move(value_);
+			T val = core::move(value_);
 			return val;
 		}
 		return forward<U>(alt);
@@ -182,16 +182,16 @@ struct Maybe {
 
 	constexpr Maybe(T const& val) : value_{val}, has_value_{true} {}
 
-	constexpr Maybe(T&& val) : value_{x::move(val)}, has_value_{true} {}
+	constexpr Maybe(T&& val) : value_{core::move(val)}, has_value_{true} {}
 
 	constexpr Maybe(Maybe<T> const&) = delete;
 
 	constexpr Maybe& operator=(T&& value){
-		return *new(this->drop()) Maybe{x::move(value)};
+		return *new(this->drop()) Maybe{core::move(value)};
 	}
 
 	constexpr Maybe& operator=(Maybe&& value){
-		return *new(this->drop()) Maybe{x::move(value)};
+		return *new(this->drop()) Maybe{core::move(value)};
 	}
 
 private:
@@ -204,7 +204,7 @@ template<typename V, typename E>
 struct Result {
 	V unwrap(){
 		if(has_value_){
-			auto val = x::move(value_);
+			auto val = core::move(value_);
 			has_value_ = false;
 			return val;
 		}
@@ -221,7 +221,7 @@ struct Result {
 	template<typename U>
 	V or_else(U&& alt){
 		if(has_value_){
-			auto val = x::move(value_);
+			auto val = core::move(value_);
 			has_value_ = false;
 			return val;
 		}
@@ -249,7 +249,7 @@ struct Result {
 
 	constexpr Result() : error_{}, has_value_{false} {}
 	constexpr Result(E const& error) : error_{error}, has_value_{false} {}
-	constexpr Result(V&& value) : value_{x::move(value)}, has_value_{true} {}
+	constexpr Result(V&& value) : value_{core::move(value)}, has_value_{true} {}
 	constexpr Result(V const& value) : value_{value}, has_value_{true} {}
 
 	constexpr Result& operator=(E const& err){
@@ -257,10 +257,10 @@ struct Result {
 	}
 
 	constexpr Result& operator=(V&& value){
-		return *new (this->drop()) Result{ x::move(value) };
+		return *new (this->drop()) Result{ core::move(value) };
 	}
 	constexpr Result& operator=(Result&& value){
-		return *new (this->drop()) Result{ x::move(value) };
+		return *new (this->drop()) Result{ core::move(value) };
 	}
 
 	~Result(){ this->drop(); }
@@ -327,6 +327,33 @@ private:
 	isize len_ {0};
 };
 
+template<typename To, typename From>
+constexpr forceinline
+To bit_cast(From&& v){
+	return __builtin_bit_cast(To, forward<From>(v));
+}
+
+static inline constexpr
+isize cstring_len(const char* p){
+	isize i = 0;
+	for(i = 0; p[i] != 0; i++){}
+	return i;
+}
+
+struct UTF8Encode {
+	byte bytes[4];
+	u8  len;
+};
+
+struct UTF8Decode {
+	rune codepoint;
+	u8  len;
+};
+
+UTF8Encode utf8_encode(rune c);
+
+UTF8Decode utf8_decode(byte const* buf, isize len);
+
 struct String {
 	byte operator[](isize idx) const {
 		ensure_bounds_check(idx >= 0 && idx < len_, "Index to string is out of bounds");
@@ -339,6 +366,12 @@ struct String {
 		s.len_ = buf.len();
 		return s;
 	}
+
+	constexpr String(){}
+
+	constexpr String(char const* p)
+		: data_{bit_cast<byte const*>(p)}
+		, len_{cstring_len(p)} {}
 
 	// Getters
 	[[nodiscard]] constexpr forceinline auto len() const { return len_; }

@@ -2,7 +2,7 @@
 #include "core.hpp"
 #include "memory.hpp"
 
-namespace x {
+namespace core {
 //// Dynamic Array
 template<typename T>
 struct DynamicArray {
@@ -13,7 +13,7 @@ struct DynamicArray {
 			if(!ok){ return; }
 		}
 		void* loc = (void*)(this->data_ + this->len_);
-		new (loc) T(x::forward<U>(e));
+		new (loc) T(core::forward<U>(e));
 		this->len_ += 1;
 	}
 
@@ -45,7 +45,7 @@ struct DynamicArray {
 		}
 
 		mem_copy(&data_[idx+1], &data_[idx], (len_ - idx) * sizeof(T));
-		new (data_ + idx) T(x::forward<U>(val));
+		new (data_ + idx) T(core::forward<U>(val));
 		len_ += 1;
 	}
 
@@ -138,13 +138,13 @@ struct DynamicArray {
 	DynamicArray(DynamicArray const&) = delete;
 
 	DynamicArray(DynamicArray&& arr)
-		: data_{x::exchange(arr.data_, nullptr)}
-		, len_{x::exchange(arr.len_, 0)}
-		, cap_{x::exchange(arr.cap_, 0)}
-		, allocator_{x::exchange(arr.allocator_, nullptr)} {}
+		: data_{core::exchange(arr.data_, nullptr)}
+		, len_{core::exchange(arr.len_, 0)}
+		, cap_{core::exchange(arr.cap_, 0)}
+		, allocator_{core::exchange(arr.allocator_, nullptr)} {}
 
 	DynamicArray& operator=(DynamicArray&& arr){
-		return *new (this->drop()) DynamicArray { x::move(arr) };
+		return *new (this->drop()) DynamicArray { core::move(arr) };
 	}
 
 	~DynamicArray(){ drop(); }

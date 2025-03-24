@@ -1,7 +1,7 @@
 #pragma once
 #include "core.hpp"
 
-namespace x {
+namespace core {
 
 //// Memory
 void mem_set(void* p, byte val, isize count);
