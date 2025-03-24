@@ -105,6 +105,8 @@ struct Lexer {
 
 	Token next();
 
+	Token consume_line_comment(){ panic("unimplemented"); }
+
 	static Lexer create(String source);
 
 	Lexer() : current{0}, previous{0}, source{} {}
@@ -156,8 +158,8 @@ Token Lexer::make_token(TokenType t){
 	return token;
 }
 
-#define MATCH_NEXT(Char, Type) if(advance_matching(Char)){ token = make_token(Type); break; }
-#define MATCH_DEFAULT(Type) { token = make_token(Type); break; }
+#define MATCH_NEXT(Char, Expr) if(advance_matching(Char)){ token = (Expr); break; }
+#define MATCH_DEFAULT(Expr) { token = (Expr); break; }
 
 Token Lexer::next(){
 	Token token;
@@ -170,21 +172,45 @@ Token Lexer::next(){
 
 	using T = TokenType;
 	switch(c){
-		case '(': MATCH_DEFAULT(T::ParenOpen);
-		case ')': MATCH_DEFAULT(T::ParenClose);
-		case '[': MATCH_DEFAULT(T::SquareOpen);
-		case ']': MATCH_DEFAULT(T::SquareClose);
-		case '{': MATCH_DEFAULT(T::CurlyOpen);
-		case '}': MATCH_DEFAULT(T::CurlyClose);
+		case '(':
+			MATCH_DEFAULT(make_token(T::ParenOpen));
+
+		case ')':
+			MATCH_DEFAULT(make_token(T::ParenClose));
+
+		case '[':
+			MATCH_DEFAULT(make_token(T::SquareOpen));
+
+		case ']':
+			MATCH_DEFAULT(make_token(T::SquareClose));
+
+		case '{':
+			MATCH_DEFAULT(make_token(T::CurlyOpen));
+
+		case '}':
+			MATCH_DEFAULT(make_token(T::CurlyClose));
 
 		case '+':
-			MATCH_NEXT('=', T::PlusAssign);
-			MATCH_DEFAULT(T::Plus);
+			MATCH_NEXT('=', make_token(T::PlusAssign));
+			MATCH_DEFAULT(make_token(T::Plus));
 
 		case '-':
-			MATCH_NEXT('=', T::MinusAssign);
-			MATCH_NEXT('>', T::ArrowRight);
-			MATCH_DEFAULT(T::Minus);
+			MATCH_NEXT('=', make_token(T::MinusAssign));
+			MATCH_NEXT('>', make_token(T::ArrowRight));
+			MATCH_DEFAULT(make_token(T::Minus));
+
+		case '*':
+			MATCH_NEXT('=', make_token(T::StarAssign));
+			MATCH_DEFAULT(make_token(T::Star));
+
+		case '/':
+			MATCH_NEXT('/', consume_line_comment());
+			MATCH_NEXT('=', make_token(T::SlashAssign));
+			MATCH_DEFAULT(make_token(T::Slash));
+
+		case '%':
+			MATCH_NEXT('=', make_token(T::ModAssign));
+			MATCH_DEFAULT(make_token(T::Mod));
 	}
 
 	return token;
@@ -201,7 +227,7 @@ std::ostream& operator<<(std::ostream& os, String s){
 
 int main(){
 	String src =
-		"-->--=-"
+		"%%="
 	;
 
 	auto lex = Lexer::create(src);
