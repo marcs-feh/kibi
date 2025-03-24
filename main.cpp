@@ -1,116 +1,11 @@
 #include "core/core.hpp"
+#include "core/memory.hpp"
+
+#include "lexer.cpp"
 
 #include <iostream>
 
 using namespace core;
-
-enum class TokenType : i32 {
-	Unknown = 0,
-
-	ParenOpen,
-	ParenClose,
-	SquareOpen,
-	SquareClose,
-	CurlyOpen,
-	CurlyClose,
-
-	Identifier,
-	String,
-	Real,
-	Integer,
-
-	Plus,
-	Minus,
-	Slash,
-	Star,
-	Mod,
-	
-	PlusAssign,
-	MinusAssign,
-	SlashAssign,
-	StarAssign,
-	ModAssign,
-
-	ArrowRight,
-
-	True, False,
-
-	EndOfFile,
-};
-
-
-constexpr String token_type_name(TokenType t){
-	using T = TokenType;
-
-	switch(t){
-	case T::Unknown: return "<Unknown>";
-
-	case T::ParenOpen: return "(";
-	case T::ParenClose: return ")";
-	case T::SquareOpen: return "[";
-	case T::SquareClose: return "]";
-	case T::CurlyOpen: return "{";
-	case T::CurlyClose: return "}";
-
-	case T::Identifier: return "Id";
-	case T::String: return "Str";
-	case T::Real: return "Real";
-	case T::Integer: return "Int";
-
-	case T::True: return "true";
-	case T::False: return "false";
-
-	case T::Plus: return "+"; break;
-	case T::Minus: return "-"; break;
-	case T::Slash: return "/"; break;
-	case T::Star: return "*"; break;
-	case T::Mod: return "%"; break;
-	
-	case T::PlusAssign: return "+="; break;
-	case T::MinusAssign: return "-="; break;
-	case T::SlashAssign: return "/="; break;
-	case T::StarAssign: return "*="; break;
-	case T::ModAssign: return "%="; break;
-
-	case T::ArrowRight: return "->"; break;
-
-	case T::EndOfFile: return "<EOF>";
-	}
-
-	panic("Unknown token type");
-};
-
-struct Token {
-	String lexeme;
-	TokenType type;
-	i64 offset;
-
-	Token() : lexeme{""}, type{0}, offset{0}{}
-};
-
-struct Lexer {
-	i64 current;
-	i64 previous;
-	Slice<byte> source;
-
-	rune advance();
-
-	bool advance_matching(rune desired);
-
-	void rewind();
-
-	rune peek();
-
-	Token make_token(TokenType t);
-
-	Token next();
-
-	Token consume_line_comment(){ panic("unimplemented"); }
-
-	static Lexer create(String source);
-
-	Lexer() : current{0}, previous{0}, source{} {}
-};
 
 Lexer Lexer::create(String source){
 	Lexer lex;
@@ -194,6 +89,9 @@ Token Lexer::next(){
 			MATCH_NEXT('=', make_token(T::PlusAssign));
 			MATCH_DEFAULT(make_token(T::Plus));
 
+		// case '.':
+		// 	MATCH_DEFAULT(make_token(T::Dot));
+
 		case '-':
 			MATCH_NEXT('=', make_token(T::MinusAssign));
 			MATCH_NEXT('>', make_token(T::ArrowRight));
@@ -211,6 +109,33 @@ Token Lexer::next(){
 		case '%':
 			MATCH_NEXT('=', make_token(T::ModAssign));
 			MATCH_DEFAULT(make_token(T::Mod));
+
+		case '>':
+			MATCH_NEXT('>', make_token(T::ShiftRight));
+			MATCH_NEXT('=', make_token(T::GreaterEqual));
+			MATCH_DEFAULT(make_token(T::Greater));
+
+		case '<':
+			MATCH_NEXT('<', make_token(T::ShiftLeft));
+			MATCH_NEXT('=', make_token(T::LessEqual));
+			MATCH_DEFAULT(make_token(T::Less));
+
+		case '&':
+			MATCH_NEXT('=', make_token(T::AndAssign));
+			MATCH_NEXT('&', make_token(T::LogicAnd));
+			MATCH_DEFAULT(make_token(T::And));
+
+		case '|':
+			MATCH_NEXT('=', make_token(T::OrAssign));
+			MATCH_NEXT('|', make_token(T::LogicOr));
+			MATCH_DEFAULT(make_token(T::Or));
+
+		case '~':
+			MATCH_DEFAULT(make_token(T::Tilde));
+
+		case '!':
+			MATCH_NEXT('=', make_token(T::NotEqual));
+			MATCH_DEFAULT(make_token(T::LogicNot));
 	}
 
 	return token;
@@ -224,16 +149,37 @@ std::ostream& operator<<(std::ostream& os, String s){
 	return os;
 }
 
+template<typename T>
+std::ostream& operator<<(std::ostream& os, Slice<T> s){
+	for(isize i = 0; i < s.len(); i++)
+		os << s[i] << ' ';
+	return os;
+}
+
+#include <math.h>
 
 int main(){
-	String src =
-		"%%="
-	;
+	// String src =
+	// 	"+-*/%&|~"
+	// ;
+	//
+	// auto lex = Lexer::create(src);
+	//
+	// for(auto tok = lex.next(); tok.type != TokenType::EndOfFile; tok = lex.next()){
+	// 	std::cout << token_type_name(tok.type) << std::endl;
+	// }
 
-	auto lex = Lexer::create(src);
+	auto nums = heap_allocator()->make<f32>(30);
+	for(auto& num : nums){
+		num = rand() % 100;
+	} 
 
-	for(auto tok = lex.next(); tok.type != TokenType::EndOfFile; tok = lex.next()){
-		std::cout << token_type_name(tok.type) << std::endl;
-	}
+	std::cout << nums << '\n';
+	sort(nums, [](f32 a, f32 b) -> int {
+		if(a == b)
+			return 0;
+		return a < b ? -1 : 1;
+	});
+
 }
 

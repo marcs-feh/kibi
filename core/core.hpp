@@ -72,6 +72,12 @@ T clamp(T lo, T x, T hi){
 	return min(max(lo, x), hi);
 }
 
+template<typename To, typename From>
+constexpr forceinline
+To bit_cast(From&& v){
+	return __builtin_bit_cast(To, forward<From>(v));
+}
+
 [[noreturn]] static forceinline
 void trap(){
 	#if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
@@ -83,7 +89,7 @@ void trap(){
 
 extern "C" {
 	int printf(const char* fmt, ...);
-	void abort(void);
+	[[noreturn]] void abort(void) noexcept;
 }
 
 [[noreturn]] static inline
@@ -132,6 +138,13 @@ constexpr T exchange(T& obj, U&& new_val){
 	T old_val = core::move(obj);
 	obj = forward<U>(new_val);
 	return old_val;
+}
+
+template<typename T>
+constexpr void swap(T& a, T& b){
+	T c = core::move(a);
+	a   = core::move(b);
+	b   = core::move(c);
 }
 
 //// Defer
@@ -310,6 +323,7 @@ template<typename T>
 struct Slice {
 	T& operator[](isize idx){
 		ensure_bounds_check(idx >= 0 && idx < len_, "Index to slice is out of bounds");
+
 		return data_[idx];
 	}
 
@@ -360,10 +374,52 @@ private:
 	isize len_ {0};
 };
 
-template<typename To, typename From>
-constexpr forceinline
-To bit_cast(From&& v){
-	return __builtin_bit_cast(To, forward<From>(v));
+template<typename F, typename T>
+concept Comparator = requires(F f, T a, T b){
+	{ f(a, b) } -> ConvertibleTo<int>;
+};
+
+namespace sort_implementation {
+
+template<typename T>
+isize quick_sort_partition(Slice<T> s, isize lo, isize hi, Comparator<T> auto&& cmp){
+	auto& pivot = s[lo];
+
+	isize const N = s.len();
+
+	isize i = lo;
+	isize j = hi;
+
+	for(;;){
+		do {
+			i += 1;
+		} while(cmp(s[i], pivot) < 0);
+
+		do {
+			j -= 1;
+		} while(cmp(s[j], pivot) > 0);
+
+		if(i >= j){
+			return j;
+		}
+
+		swap(s[i], s[j]);
+	}
+}
+
+template<typename T, Comparator<T> Fn>
+void quick_sort_rec(Slice<T> s, isize lo, isize hi, Fn&& cmp){
+	if(lo >= 0 && hi >= 0 && lo < hi) {
+		isize p = quick_sort_partition(s, lo, hi, core::forward<Fn>(cmp));
+		quick_sort_rec(s, lo, p, core::forward<Fn>(cmp));
+		quick_sort_rec(s, p + 1, hi, core::forward<Fn>(cmp));
+	}
+}
+}
+
+template<typename T, Comparator<T> Fn>
+void sort(Slice<T> s, Fn&& cmp){
+	sort_implementation::quick_sort_rec(s, 0, s.len() - 1, core::forward<Fn>(cmp));
 }
 
 static inline constexpr
