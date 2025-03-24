@@ -48,12 +48,12 @@ UTF8Encode utf8_encode(rune c){
 
 	if(c <= UTF8_RANGE1){
 		res.len = 1;
-		res.bytes[0] = c;
+		res.bytes[0] = u8(c & 0xff);
 	}
 	else if(c <= UTF8_RANGE2){
 		res.len = 2;
 		res.bytes[0] = UTF8_SIZE2 | ((c >> 6) & UTF8_MASK2);
-		res.bytes[1] = CONT  | ((c >> 0) & UTF8_MASKX);
+		res.bytes[1] = CONT       | ((c >> 0) & UTF8_MASKX);
 	}
 	else if(c <= UTF8_RANGE3){
 		res.len = 3;

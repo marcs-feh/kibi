@@ -1,11 +1,14 @@
 #pragma once
+// This should *ALWAYS* be at the top
+#include "build_context.hpp"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <new>
 
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
 	#define forceinline __attribute__((always_inline)) inline
-#elif defined(_MSVC_VER)
+#elif defined(COMPILER_MSVC)
 	#define forceinline __forceinline
 #else
 	#error "Unsupported compiler, could not find forceinline builtin"
@@ -68,20 +71,44 @@ T clamp(T lo, T x, T hi){
 	return min(max(lo, x), hi);
 }
 
-extern "C" { int printf(const char* fmt, ...); }
+[[noreturn]] static forceinline
+void trap(){
+	#if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
+	__builtin_trap();
+	#elif defined(COMPILER_MSVC)
+	__debugbreak();
+	#endif
+}
+
+extern "C" {
+	int printf(const char* fmt, ...);
+	void abort(void);
+}
 
 [[noreturn]] static inline
 void panic(char const* msg){
 	printf("Panic: %s\n", msg);
-	__builtin_trap();
+	abort();
 }
 
 static inline
 void ensure(bool pred, char const* msg){
 	[[unlikely]] if(!pred){
 		printf("Failed assertion: %s\n", msg);
-		__builtin_trap();
+		trap();
 	}
+}
+
+static inline
+void ensure_bounds_check(bool pred, char const* msg){
+	#ifndef DISABLE_BOUNDS_CHECK
+	[[unlikely]] if(!pred){
+		printf("Bounds check failed: %s\n", msg);
+		trap();
+	}
+	#else
+	(void)pred; (void)msg;
+	#endif
 }
 
 template<typename T> forceinline
@@ -123,18 +150,6 @@ auto make_deferred(F&& f){
 #define _impl_defer_concat1(X, Y) _impl_defer_concat0(X, Y)
 #define _impl_defer_concat_counter(X) _impl_defer_concat1(X, __COUNTER__)
 #define defer(Stmt) auto _impl_defer_concat_counter(_defer_) = ::defer_implementation::make_deferred([&](){ do { Stmt ; } while(0); return; })
-}
-
-static inline
-void ensure_bounds_check(bool pred, char const* msg){
-	#ifndef DISABLE_BOUNDS_CHECK
-	[[unlikely]] if(!pred){
-		printf("Bounds check failed: %s\n", msg);
-		__builtin_trap();
-	}
-	#else
-	(void)pred; (void)msg;
-	#endif
 }
 
 template<typename T>
@@ -342,12 +357,12 @@ isize cstring_len(const char* p){
 
 struct UTF8Encode {
 	byte bytes[4];
-	u8  len;
+	u32  len;
 };
 
 struct UTF8Decode {
 	rune codepoint;
-	u8  len;
+	u32  len;
 };
 
 UTF8Encode utf8_encode(rune c);
@@ -360,6 +375,7 @@ struct String {
 		return data_[idx];
 	}
 
+	[[nodiscard]]
 	static String from_bytes(Slice<byte> buf){
 		String s;
 		s.data_ = buf.data();

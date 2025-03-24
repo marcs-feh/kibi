@@ -1,4 +1,5 @@
 #pragma once
+#include "build_context.hpp"
 
 template<typename T>
 struct Identity {
@@ -21,7 +22,7 @@ concept SameAs = is_same_type<A, B>;
 
 template<typename T, typename ...Args>
 concept Constructible =
-	#if __has_builtin(__is_constructible)
+	#if defined(COMPILER_CLANG) || defined(COMPILER_GCC) || defined(COMPILER_MSVC)
 		__is_constructible(T, Args...)
 	#else
 		#error "Compiler not supported, could not find a builtin to detect if type is constructible"
@@ -30,33 +31,32 @@ concept Constructible =
 
 template<typename T>
 concept TriviallyConstructible =
-	#if __has_builtin(__is_trivially_constructible)
 		 __is_trivially_constructible(T)
-	#elif __has_builtin(__has_trivial_constructor)
-		_has_trivial_constructor(T)
-	#else
-		#error "Compiler not supported, could not find a builtin to detect if type is trivially constructible"
-	#endif
+	// #elif __has_builtin(__has_trivial_constructor)
+	// 	__has_trivial_constructor(T)
+	// #else
+	// 	#error "Compiler not supported, could not find a builtin to detect if type is trivially constructible"
+	// #endif
 ;
 
 template<typename T>
 concept TriviallyDestructible =
-	#if __has_builtin(__is_trivially_destructible)
+	// #if __has_builtin(__is_trivially_destructible)
 			__is_trivially_destructible(T);
-	#elif __has_builtin(__has_trivial_destructor)
-		__has_trivial_destructor(T);
-	#else
-		#error "Compiler not supported, could not find a builtin to detect if type is trivially destructible"
-	#endif
+	// #elif __has_builtin(__has_trivial_destructor)
+		// __has_trivial_destructor(T);
+	// #else
+	// 	#error "Compiler not supported, could not find a builtin to detect if type is trivially destructible"
+	// #endif
 ;
 
 template<typename T>
 concept TriviallyCopyable =
-	#if __has_builtin(__is_trivially_copyable)
+	// #if __has_builtin(__is_trivially_copyable)
 		__is_trivially_copyable(T)
-	#else
-		#error "Compiler not supported, could not find a builtin to detect if type is trivially copyable"
-	#endif
+	// #else
+	// 	#error "Compiler not supported, could not find a builtin to detect if type is trivially copyable"
+	// #endif
 ;
 
 template<typename T>

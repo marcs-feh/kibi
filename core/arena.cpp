@@ -16,7 +16,7 @@ void* Arena::alloc(isize size, isize align){
 	uintptr base = (uintptr)this->data;
 	uintptr current = base + (uintptr)this->offset;
 
-	isize available = this->capacity - (current - base);
+	isize available = this->capacity - isize(current - base);
 
 	uintptr aligned = mem_align_forward_ptr(current, align);
 	isize padding   = aligned - current;
@@ -29,7 +29,7 @@ void* Arena::alloc(isize size, isize align){
 	this->offset += required;
 	void* allocation = (void*)aligned;
 	this->last_allocation = allocation;
-	__builtin_memset(allocation, 0, size);
+	mem_set(allocation, 0, size);
 
 	return allocation;
 }
@@ -91,12 +91,12 @@ ArenaRegion Arena::create_region(){
 }
 
 void ArenaRegion::release(){
-	auto arena = this->arena;
-	ensure(arena->region_count > 0, "Arena has a improper region counter");
-	ensure(arena->offset >= this->offset, "Arena has a lower offset than region");
+	auto a = this->arena;
+	ensure(a->region_count > 0, "Arena has a improper region counter");
+	ensure(a->offset >= this->offset, "Arena has a lower offset than region");
 
-	arena->offset = this->offset;
-	arena->region_count -= 1;
+	a->offset = this->offset;
+	a->region_count -= 1;
 }
 
 } /* Universal namespace */
