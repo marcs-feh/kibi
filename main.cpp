@@ -23,14 +23,15 @@ std::ostream& operator<<(std::ostream& os, Slice<T> s){
 int main(){
 	using namespace kielo;
 	String src =
-		"+-*/%&|~"
+		"//+-*/%&|~\n"
+		"<<<^>>>"
 	;
 
 	auto lex = Lexer::create(src);
 
 	for(auto token = lex.next().or_else({});
-			token.type != TokenType::EndOfFile;
-			token = lex.next().or_else({}))
+		token.type != TokenType::EndOfFile;
+		token = lex.next().or_else({}))
 	{
 		std::cout << token_type_name(token.type) << std::endl;
 	}

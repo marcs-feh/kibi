@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <new>
+#include <source_location>
 
 #if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
 	#define forceinline __attribute__((always_inline)) inline
@@ -18,6 +19,8 @@
 #include "meta.hpp"
 
 namespace core {
+
+using SourceLocation = std::source_location;
 
 //// Primitive types
 using i8  = int8_t;
@@ -91,25 +94,27 @@ extern "C" {
 	int printf(const char* fmt, ...);
 }
 
+#define caller_location(Id) SourceLocation const& Id = SourceLocation::current()
+
 [[noreturn]] static inline
-void panic(char const* msg){
-	printf("Panic: %s\n", msg);
+void panic(char const* msg, caller_location(loc)){
+	printf("(%s:%d) Panic: %s\n", loc.file_name(), loc.line(), msg);
 	trap();
 }
 
 static inline
-void ensure(bool pred, char const* msg){
+void ensure(bool pred, char const* msg, caller_location(loc)){
 	[[unlikely]] if(!pred){
-		printf("Failed assertion: %s\n", msg);
+		printf("(%s:%d) Failed assertion: %s\n", loc.file_name(), loc.line(), msg);
 		trap();
 	}
 }
 
 static inline
-void ensure_bounds_check(bool pred, char const* msg){
+void ensure_bounds_check(bool pred, char const* msg, caller_location(loc)){
 	#ifndef DISABLE_BOUNDS_CHECK
 	[[unlikely]] if(!pred){
-		printf("Bounds check failed: %s\n", msg);
+		printf("(%s:%d) Bounds check failed: %s\n", loc.file_name(), loc.line(), msg);
 		trap();
 	}
 	#else

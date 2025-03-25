@@ -55,7 +55,6 @@ Token Lexer::consume_line_comment(){
     for(;;){
         rune c = advance();
         if(c == '\n' || c == 0){
-            rewind();
             break;
         }
     }
@@ -99,6 +98,9 @@ Result<Token, Error> Lexer::next(){
 
 		case '.':
 			MATCH_DEFAULT(make_token(T::Dot));
+
+		case '^':
+			MATCH_DEFAULT(make_token(T::Caret));
 
 		case ':':
 			MATCH_DEFAULT(make_token(T::Colon));

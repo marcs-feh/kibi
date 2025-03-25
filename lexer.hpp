@@ -46,6 +46,7 @@ enum class TokenType : i32 {
 	Assign,
 	ArrowRight,
 	Dot,
+	Caret,
 	Colon,
 	Semicolon,
 	Comma,
@@ -127,7 +128,7 @@ struct Lexer {
 };
 
 constexpr static inline
-String token_type_name(TokenType t){
+String token_type_name(TokenType t, caller_location(loc)){
 	using T = TokenType;
 
 	switch(t){
@@ -170,6 +171,7 @@ String token_type_name(TokenType t){
 	case T::Assign: return "=";
 	case T::ArrowRight: return "->";
 	case T::Dot: return ".";
+	case T::Caret: return "^";
 	case T::Colon: return ":";
 	case T::Semicolon: return ";";
 	case T::Comma: return ",";
@@ -196,9 +198,11 @@ String token_type_name(TokenType t){
 	case T::Continue: return "continue";
 	case T::Match: return "match";
 
+	case T::LineComment: return "Comment";
+
 	case T::EndOfFile: return "<EOF>";
 	}
 
-	panic("Unknown token type");
+	panic("Unknown token type", loc);
 };
 }
