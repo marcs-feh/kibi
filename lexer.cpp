@@ -9,6 +9,11 @@ Lexer Lexer::create(String source){
 	return lex;
 }
 
+static inline
+bool is_decimal_digit(rune c){
+	return (c >= '0') && (c <= '9');
+}
+
 rune Lexer::peek(){
 	if(current >= source.len()){ return 0; }
 	auto [codepoint, _] = utf8_decode(source[{current, source.len()}]);
@@ -59,7 +64,11 @@ Token Lexer::consume_line_comment(){
         }
     }
     
-    return make_token(TokenType::LineComment);
+    auto res = make_token(TokenType::LineComment);
+
+	// Include double-slash and ignore line-feed
+	res.lexeme = String::from_bytes(source[{previous-2, current-1}]);
+	return res;
 }
 
 Error Lexer::make_error(ErrorType t){
@@ -165,6 +174,18 @@ Result<Token, Error> Lexer::next(){
 		case '!':
 			MATCH_NEXT('=', make_token(T::NotEqual));
 			MATCH_DEFAULT(make_token(T::LogicNot));
+
+		case '"':
+			panic("Unimplemented: string");
+
+		case '\n': case '\r': case '\t':
+			token = make_token(T::Whitespace);
+
+		default:
+			if(is_decimal_digit(c)){
+				panic("Unimplemented: number");
+			}
+
 	}
 
 	if(token.type == TokenType::Unknown)

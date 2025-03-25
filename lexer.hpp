@@ -74,6 +74,7 @@ enum class TokenType : i32 {
 	Continue,
 	Match,
 
+	Whitespace,
 	LineComment,
 	EndOfFile,
 };
@@ -199,6 +200,7 @@ String token_type_name(TokenType t, caller_location(loc)){
 	case T::Match: return "match";
 
 	case T::LineComment: return "Comment";
+	case T::Whitespace: return " ";
 
 	case T::EndOfFile: return "<EOF>";
 	}

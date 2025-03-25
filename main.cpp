@@ -18,6 +18,11 @@ std::ostream& operator<<(std::ostream& os, Slice<T> s){
 	return os;
 }
 
+std::ostream& operator<<(std::ostream& os, kielo::Token t){
+	os << kielo::token_type_name(t.type) << "\t\"" << t.lexeme << '"';
+	return os;
+}
+
 #include <math.h>
 
 int main(){
@@ -33,7 +38,7 @@ int main(){
 		token.type != TokenType::EndOfFile;
 		token = lex.next().or_else({}))
 	{
-		std::cout << token_type_name(token.type) << std::endl;
+		std::cout << token << std::endl;
 	}
 
 }
