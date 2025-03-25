@@ -376,28 +376,27 @@ private:
 
 template<typename F, typename T>
 concept Comparator = requires(F f, T a, T b){
-	{ f(a, b) } -> ConvertibleTo<int>;
+	{ f(a, b) } -> ConvertibleTo<int>; /* -1: a < b, 0: a == b, +1: a > b */
 };
 
-namespace sort_implementation {
-
+namespace sorting {
 template<typename T>
 isize quick_sort_partition(Slice<T> s, isize lo, isize hi, Comparator<T> auto&& cmp){
 	auto& pivot = s[lo];
 
 	isize const N = s.len();
 
-	isize i = lo;
-	isize j = hi;
+	isize i = lo - 1;
+	isize j = hi + 1;
 
 	for(;;){
 		do {
 			i += 1;
-		} while(cmp(s[i], pivot) < 0);
+		} while(i < N && cmp(s[i], pivot) < 0);
 
 		do {
 			j -= 1;
-		} while(cmp(s[j], pivot) > 0);
+		} while(j > -1 && cmp(s[j], pivot) > 0);
 
 		if(i >= j){
 			return j;
@@ -410,16 +409,42 @@ isize quick_sort_partition(Slice<T> s, isize lo, isize hi, Comparator<T> auto&& 
 template<typename T, Comparator<T> Fn>
 void quick_sort_rec(Slice<T> s, isize lo, isize hi, Fn&& cmp){
 	if(lo >= 0 && hi >= 0 && lo < hi) {
-		isize p = quick_sort_partition(s, lo, hi, core::forward<Fn>(cmp));
-		quick_sort_rec(s, lo, p, core::forward<Fn>(cmp));
-		quick_sort_rec(s, p + 1, hi, core::forward<Fn>(cmp));
+		isize p = quick_sort_partition(s, lo, hi, cmp);
+		quick_sort_rec(s, lo, p, cmp);
+		quick_sort_rec(s, p + 1, hi, cmp);
 	}
 }
+
+
+template<typename T, Comparator<T> Fn>
+void insertion_sort(Slice<T> s, Fn&& cmp){
+	for(isize i = 1; i < s.len(); i += 1){
+		for(isize j = i; j > 0 && cmp(s[j-1], s[j]) > 0; j -= 1){
+			swap(s[j], s[j-1]);
+		}
+	}
+}
+
+// NOTE: Any array below this limit will be sorted with just insertion sort, as it
+// works quite well for small collections
+constexpr isize small_array_limit = 32;
+
+// TODO: Merge sort
 }
 
 template<typename T, Comparator<T> Fn>
 void sort(Slice<T> s, Fn&& cmp){
-	sort_implementation::quick_sort_rec(s, 0, s.len() - 1, core::forward<Fn>(cmp));
+	if(s.len() < sorting::small_array_limit){
+		sorting::insertion_sort(s, cmp);
+	}
+	else {
+		sorting::quick_sort_rec(s, 0, s.len() - 1, cmp);
+	}
+}
+
+template<typename T, Comparator<T> Fn>
+void stable_sort(Slice<T> s, Fn&& cmp){
+	sorting::insertion_sort(s, core::forward<Fn>(cmp));
 }
 
 static inline constexpr

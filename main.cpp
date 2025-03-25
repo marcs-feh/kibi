@@ -1,9 +1,9 @@
 #include "core/core.hpp"
 #include "core/memory.hpp"
 
-#include "lexer.cpp"
 
 #include <iostream>
+#include "lexer.cpp"
 
 using namespace core;
 
@@ -159,27 +159,21 @@ std::ostream& operator<<(std::ostream& os, Slice<T> s){
 #include <math.h>
 
 int main(){
-	// String src =
-	// 	"+-*/%&|~"
-	// ;
-	//
+	String src =
+		"+-*/%&|~"
+	;
+
+
+	auto ops = lexer_operator_table();
+	for(auto [name, _] : ops){
+		std::cout << name << '\n';
+	}
+
 	// auto lex = Lexer::create(src);
 	//
 	// for(auto tok = lex.next(); tok.type != TokenType::EndOfFile; tok = lex.next()){
 	// 	std::cout << token_type_name(tok.type) << std::endl;
 	// }
-
-	auto nums = heap_allocator()->make<f32>(30);
-	for(auto& num : nums){
-		num = rand() % 100;
-	} 
-
-	std::cout << nums << '\n';
-	sort(nums, [](f32 a, f32 b) -> int {
-		if(a == b)
-			return 0;
-		return a < b ? -1 : 1;
-	});
 
 }
 
