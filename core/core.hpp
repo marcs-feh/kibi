@@ -170,6 +170,16 @@ auto make_deferred(F&& f){
 #define defer(Stmt) auto _impl_defer_concat_counter(_defer_) = ::defer_implementation::make_deferred([&](){ do { Stmt ; } while(0); return; })
 }
 
+//// Memory primitives
+void mem_set(void* p, byte val, isize count);
+
+void mem_copy(void* dest, void const* source, isize count);
+
+void mem_copy_no_overlap(void* dest, void const* source, isize count);
+
+i32 mem_compare(void const* lhs, void const* rhs, isize count);
+
+//// Optional type
 template<typename T>
 struct Maybe {
 	T unwrap(){
@@ -233,6 +243,7 @@ private:
 	bool has_value_;
 };
 
+//// Result type
 template<typename V, typename E>
 	requires DefaultInitalizable<E> && CopyConstructible<E> && TriviallyDestructible<E>
 struct Result {
@@ -516,6 +527,37 @@ struct String {
 	// NOTE: This is not guaranteed to be safe to modify
 	Slice<byte> raw_bytes(){
 		return Slice<byte>((byte*)data_, len_);
+	}
+
+	constexpr bool operator==(String const& s){
+		if(len_ != s.len_){ return false; }
+		return mem_compare(data_, s.data_, len_) == 0;
+	}
+
+	constexpr bool operator!=(String const& s){
+		if(len_ != s.len_){ return true; }
+		return mem_compare(data_, s.data_, len_) != 0;
+	}
+
+	constexpr bool operator>(String const& s){
+		auto cmp = mem_compare(data_, s.data_, min(s.len_, len_));
+		if(cmp == 0){ return len_ > s.len_; }
+		return cmp > 0;
+	}
+
+	constexpr bool operator<(String const& s){
+		auto cmp = mem_compare(data_, s.data_, min(s.len_, len_));
+		if(cmp == 0){ return len_ < s.len_; }
+		return cmp < 0;
+	}
+
+	constexpr bool operator<=(String const& s){
+		auto cmp = mem_compare(data_, s.data_, min(s.len_, len_));
+		return cmp <= 0;
+	}
+	constexpr bool operator>=(String const& s){
+		auto cmp = mem_compare(data_, s.data_, min(s.len_, len_));
+		return cmp >= 0;
 	}
 
 	constexpr String(){}

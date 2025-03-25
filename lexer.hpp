@@ -121,7 +121,7 @@ struct Lexer {
 
 	Token consume_line_comment();
 
-	Result<Token, Error> consume_identifier();
+	Token consume_identifier();
 
 	static Lexer create(String source);
 

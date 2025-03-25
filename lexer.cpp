@@ -14,6 +14,14 @@ bool is_decimal_digit(rune c){
 	return (c >= '0') && (c <= '9');
 }
 
+static inline
+bool is_identifier_char(rune c){
+	auto upper_ascii = (c >= 'A') && (c <= 'Z');
+	auto lower_ascii = (c >= 'a') && (c <= 'z');
+	auto decimal = (c >= '0') && (c <= '9');
+	return upper_ascii || lower_ascii || decimal || (c == '_');
+}
+
 rune Lexer::peek(){
 	if(current >= source.len()){ return 0; }
 	auto [codepoint, _] = utf8_decode(source[{current, source.len()}]);
@@ -46,11 +54,46 @@ void Lexer::rewind(){
 	}
 }
 
-Token Lexer::make_token(TokenType t){
-	Token token;
-	token.type = t;
-	token.lexeme = String::from_bytes(source[{previous, current}]);
-	token.offset = current;
+static inline
+Maybe<TokenType> keyword_of(String s){
+	using T = TokenType;
+	constexpr Pair<String, TokenType> keywords[] = {
+		{"if",       T::If},
+		{"else",     T::Else},
+		{"for",      T::For},
+		{"break",    T::Break},
+		{"continue", T::Continue},
+		{"fn",       T::Fn},
+		{"return",   T::Return},
+		{"match",    T::Match},
+		{"let",      T::Let},
+		{"struct",   T::Struct},
+	};
+
+	constexpr isize N = sizeof(keywords) / sizeof(keywords[0]);
+
+	for(isize i = 0; i < N; i += 1){
+		if(s == keywords[i].a){
+			return keywords[i].b;
+		}
+	}
+	return {};
+}
+
+
+Token Lexer::consume_identifier(){
+	previous = current;
+
+	for(;;){
+		rune c = advance();
+		if(!is_identifier_char(c)){
+			rewind();
+			break;
+		}
+	}
+
+	auto token = make_token(TokenType::Unknown);
+	token.type = keyword_of(token.lexeme).or_else(TokenType::Identifier);
 	return token;
 }
 
@@ -77,6 +120,14 @@ Error Lexer::make_error(ErrorType t){
 	e.offset = current;
 	// e.file = file;
 	return e;
+}
+
+Token Lexer::make_token(TokenType t){
+	Token token;
+	token.type = t;
+	token.lexeme = String::from_bytes(source[{previous, current}]);
+	token.offset = current;
+	return token;
 }
 
 #define MATCH_NEXT(Char, Expr) if(advance_matching(Char)){ token = (Expr); break; }
@@ -130,6 +181,10 @@ Result<Token, Error> Lexer::next(){
 			MATCH_NEXT('=', make_token(T::PlusAssign));
 			MATCH_DEFAULT(make_token(T::Plus));
 
+		case '=':
+			MATCH_NEXT('=', make_token(T::Equal));
+			MATCH_DEFAULT(make_token(T::Assign));
+
 		case '-':
 			MATCH_NEXT('=', make_token(T::MinusAssign));
 			MATCH_NEXT('>', make_token(T::ArrowRight));
@@ -178,14 +233,18 @@ Result<Token, Error> Lexer::next(){
 		case '"':
 			panic("Unimplemented: string");
 
-		case '\n': case '\r': case '\t':
+		case '\n': case '\r': case '\t': case ' ':
 			token = make_token(T::Whitespace);
 
 		default:
 			if(is_decimal_digit(c)){
 				panic("Unimplemented: number");
 			}
-
+			else if(is_identifier_char(c)){
+				rewind();
+				token = consume_identifier();
+			}
+		break;
 	}
 
 	if(token.type == TokenType::Unknown)

@@ -28,8 +28,9 @@ std::ostream& operator<<(std::ostream& os, kielo::Token t){
 int main(){
 	using namespace kielo;
 	String src =
-		"//+-*/%&|~\n"
-		"<<<^>>>"
+		"fn main(){\n"
+		"  let x: f32 = (6 + 4) / 2;\n"
+		"}\n"
 	;
 
 	auto lex = Lexer::create(src);
