@@ -89,13 +89,12 @@ void trap(){
 
 extern "C" {
 	int printf(const char* fmt, ...);
-	[[noreturn]] void abort(void) noexcept;
 }
 
 [[noreturn]] static inline
 void panic(char const* msg){
 	printf("Panic: %s\n", msg);
-	abort();
+	trap();
 }
 
 static inline
@@ -181,6 +180,7 @@ struct Maybe {
 	T or_else(U&& alt){
 		if(has_value_){
 			T val = core::move(value_);
+			has_value_ = false;
 			return val;
 		}
 		return forward<U>(alt);
@@ -247,14 +247,13 @@ struct Result {
 		panic("Attempt to unwrap_error() value result");
 	}
 
-	template<typename U>
-	V or_else(U&& alt){
+	V or_else(V&& alt) {
 		if(has_value_){
 			auto val = core::move(value_);
 			has_value_ = false;
 			return val;
 		}
-		return forward<U>(alt);
+		return forward<V>(alt);
 	}
 
 	Result* drop(){
@@ -267,7 +266,9 @@ struct Result {
 		return this;
 	}
 
-	Result copy(){
+	Result copy()
+		requires CopyConstructible<V>
+	{
 		if(!has_value_){
 			return Result { error_ };
 		}
@@ -276,20 +277,36 @@ struct Result {
 
 	[[nodiscard]] constexpr forceinline auto ok() const { return has_value_; }
 
-	constexpr Result() : error_{}, has_value_{false} {}
-	constexpr Result(E const& error) : error_{error}, has_value_{false} {}
-	constexpr Result(V&& value) : value_{core::move(value)}, has_value_{true} {}
-	constexpr Result(V const& value) : value_{value}, has_value_{true} {}
-
+	constexpr Result()
+		: error_{}, has_value_{false} {}
+	constexpr Result(E const& error)
+		: error_{error}, has_value_{false} {}
+	constexpr Result(V&& value)
+		: value_{core::move(value)}, has_value_{true} {}
+	constexpr Result(V const& value)
+		: value_{value}, has_value_{true} {}
+	constexpr Result(Result&& res){
+		has_value_ = exchange(res.has_value_, false);
+		if(has_value_){
+			value_ = core::move(res.value_);
+		} else {
+			error_ = res.error_;
+		}
+	}
 	constexpr Result& operator=(E const& err){
 		return *new (this->drop()) Result{ err };
 	}
-
+	constexpr Result& operator=(V const& value){
+		return *new (this->drop()) Result{ value };
+	}
 	constexpr Result& operator=(V&& value){
 		return *new (this->drop()) Result{ core::move(value) };
 	}
-	constexpr Result& operator=(Result&& value){
-		return *new (this->drop()) Result{ core::move(value) };
+	constexpr Result& operator=(Result&& res){
+		return *new (this->drop()) Result{ core::move(res) };
+	}
+	constexpr Result& operator=(Result const& res){
+		return *new (this->drop()) Result{ res };
 	}
 
 	~Result(){ this->drop(); }

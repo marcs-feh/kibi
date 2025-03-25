@@ -63,10 +63,18 @@ Token Lexer::consume_line_comment(){
     return make_token(TokenType::LineComment);
 }
 
+Error Lexer::make_error(ErrorType t){
+	Error e;
+	e.type = t;
+	e.offset = current;
+	// e.file = file;
+	return e;
+}
+
 #define MATCH_NEXT(Char, Expr) if(advance_matching(Char)){ token = (Expr); break; }
 #define MATCH_DEFAULT(Expr) { token = (Expr); break; }
 
-Token Lexer::next(){
+Result<Token, Error> Lexer::next(){
 	Token token;
 	previous = current;
 
@@ -89,6 +97,18 @@ Token Lexer::next(){
 		case ']':
 			MATCH_DEFAULT(make_token(T::SquareClose));
 
+		case '.':
+			MATCH_DEFAULT(make_token(T::Dot));
+
+		case ':':
+			MATCH_DEFAULT(make_token(T::Colon));
+
+		case ',':
+			MATCH_DEFAULT(make_token(T::Comma));
+
+		case ';':
+			MATCH_DEFAULT(make_token(T::Semicolon));
+
 		case '{':
 			MATCH_DEFAULT(make_token(T::CurlyOpen));
 
@@ -98,9 +118,6 @@ Token Lexer::next(){
 		case '+':
 			MATCH_NEXT('=', make_token(T::PlusAssign));
 			MATCH_DEFAULT(make_token(T::Plus));
-
-		case '.':
-			MATCH_DEFAULT(make_token(T::Dot));
 
 		case '-':
 			MATCH_NEXT('=', make_token(T::MinusAssign));
@@ -148,7 +165,10 @@ Token Lexer::next(){
 			MATCH_DEFAULT(make_token(T::LogicNot));
 	}
 
-	return token;
+	if(token.type == TokenType::Unknown)
+		return make_error(ErrorType::Lexer_BadCodepoint);
+	else
+		return token;
 }
 
 #undef MATCH_NEXT

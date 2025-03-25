@@ -6,5 +6,5 @@ clang++ -Os -std=c++20 -o main.exe \
 	-fno-strict-aliasing \
 	-Wall -Wextra \
 	-g \
-	main.cpp core/core.cpp
+	main.cpp kielo.cpp core/core.cpp
 

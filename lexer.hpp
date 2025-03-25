@@ -85,6 +85,19 @@ struct Token {
 	Token() : lexeme{""}, type{0}, offset{0}{}
 };
 
+enum class ErrorType : u32 {
+	None = 0,
+
+	Lexer_BadCodepoint,
+};
+
+struct Error {
+	String file = "<No file>";
+	String message = "";
+	i64 offset = 0;
+	ErrorType type{0};
+};
+
 struct Lexer {
 	i64 current;
 	i64 previous;
@@ -100,9 +113,13 @@ struct Lexer {
 
 	Token make_token(TokenType t);
 
-	Token next();
+	Error make_error(ErrorType t);
+
+	Result<Token, Error> next();
 
 	Token consume_line_comment();
+
+	Result<Token, Error> consume_identifier();
 
 	static Lexer create(String source);
 

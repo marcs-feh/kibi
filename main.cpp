@@ -28,8 +28,11 @@ int main(){
 
 	auto lex = Lexer::create(src);
 
-	for(auto tok = lex.next(); tok.type != TokenType::EndOfFile; tok = lex.next()){
-		std::cout << token_type_name(tok.type) << std::endl;
+	for(auto token = lex.next().or_else({});
+			token.type != TokenType::EndOfFile;
+			token = lex.next().or_else({}))
+	{
+		std::cout << token_type_name(token.type) << std::endl;
 	}
 
 }
