@@ -79,31 +79,41 @@ enum class TokenType : i32 {
 	EndOfFile,
 };
 
+union TokenValue {
+	f64    real;
+	i64    integer;
+	String text;
+};
+
 struct Token {
 	String lexeme;
 	TokenType type;
 	i64 offset;
+	TokenValue value;
 
-	Token() : lexeme{""}, type{0}, offset{0}{}
+	Token() : lexeme{""}, type{0}, offset{0}, value{i64(0)} {}
 };
 
 enum class ErrorType : u32 {
 	None = 0,
 
 	Lexer_BadCodepoint,
+	Lexer_InvalidBase,
 };
 
 struct Error {
 	String file = "<No file>";
-	String message = "";
 	i64 offset = 0;
 	ErrorType type{0};
+	String message = "";
 };
+
 
 struct Lexer {
 	i64 current;
 	i64 previous;
 	Slice<byte> source;
+	Arena* scratch;
 
 	rune advance();
 
@@ -111,7 +121,7 @@ struct Lexer {
 
 	void rewind();
 
-	rune peek();
+	rune peek(isize delta = 0);
 
 	Token make_token(TokenType t);
 
@@ -122,6 +132,12 @@ struct Lexer {
 	Token consume_line_comment();
 
 	Token consume_identifier();
+
+	Result<Token, Error> consume_number();
+
+	Token consume_decimal();
+
+	Token consume_integer(i32 base);
 
 	static Lexer create(String source);
 

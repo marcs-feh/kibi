@@ -1,5 +1,6 @@
 #include "core/core.hpp"
 #include "core/memory.hpp"
+#include "core/dynamic_array.hpp"
 #include "lexer.hpp"
 
 namespace kielo {
@@ -15,6 +16,13 @@ bool is_decimal_digit(rune c){
 }
 
 static inline
+bool is_alpha(rune c){
+	auto upper_ascii = (c >= 'A') && (c <= 'Z');
+	auto lower_ascii = (c >= 'a') && (c <= 'z');
+	return upper_ascii || lower_ascii;
+}
+
+static inline
 bool is_identifier_char(rune c){
 	auto upper_ascii = (c >= 'A') && (c <= 'Z');
 	auto lower_ascii = (c >= 'a') && (c <= 'z');
@@ -22,9 +30,10 @@ bool is_identifier_char(rune c){
 	return upper_ascii || lower_ascii || decimal || (c == '_');
 }
 
-rune Lexer::peek(){
-	if(current >= source.len()){ return 0; }
-	auto [codepoint, _] = utf8_decode(source[{current, source.len()}]);
+rune Lexer::peek(isize delta){
+	isize pos = current + delta;
+	if(pos >= source.len()){ return 0; }
+	auto [codepoint, _] = utf8_decode(source[{pos, source.len()}]);
 	return codepoint;
 }
 
@@ -36,6 +45,64 @@ bool Lexer::advance_matching(rune desired){
 	}
 
 	return false;
+}
+
+Result<Token, Error> Lexer::consume_number(){
+	previous = current;
+	auto first = peek();
+
+	ensure(is_decimal_digit(first), "Not currently in a number");
+
+	if(first == '0'){
+		auto second = peek(1);
+		switch(second){
+			case 'b': case 'B':
+				panic("bin");
+			case 'o': case 'O':
+				panic("octal");
+			case 'x': case 'X':
+				panic("hex");
+		}
+
+		if(is_alpha(second)){
+			auto err = make_error(ErrorType::Lexer_InvalidBase);
+			// TODO: Better message
+			return err;
+		}
+	}
+
+	return consume_decimal();
+}
+
+Token Lexer::consume_decimal(){ panic("decimal"); }
+
+Token Lexer::consume_integer(i32 base){
+	constexpr auto is_hex = [](rune c) -> bool {
+		return (c >= '0' && c < '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+	};
+	constexpr auto is_oct = [](rune c) -> bool {
+		return (c >= '0' && c < '7');
+	};
+	constexpr auto is_bin = [](rune c) -> bool {
+		return (c >= '0' && c < '7');
+	};
+
+	using DigitFn = bool (*)(rune);
+
+	DigitFn valid_digit = nullptr;
+
+	switch(base){
+		case 2:  valid_digit = is_bin; break;
+		case 8:  valid_digit = is_oct; break;
+		case 16: valid_digit = is_hex; break;
+	}
+	ensure(valid_digit != nullptr, "Invalid base");
+
+	auto region = scratch->create_region();
+	defer(region.release());
+	auto digits = DynamicArray<rune>::create(scratch, 128);
+
+	panic("--");
 }
 
 rune Lexer::advance(){
@@ -238,7 +305,8 @@ Result<Token, Error> Lexer::next(){
 
 		default:
 			if(is_decimal_digit(c)){
-				panic("Unimplemented: number");
+				rewind();
+				return consume_number();
 			}
 			else if(is_identifier_char(c)){
 				rewind();

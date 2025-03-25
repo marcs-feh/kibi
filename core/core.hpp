@@ -167,7 +167,7 @@ auto make_deferred(F&& f){
 #define _impl_defer_concat0(X, Y) X##Y
 #define _impl_defer_concat1(X, Y) _impl_defer_concat0(X, Y)
 #define _impl_defer_concat_counter(X) _impl_defer_concat1(X, __COUNTER__)
-#define defer(Stmt) auto _impl_defer_concat_counter(_defer_) = ::defer_implementation::make_deferred([&](){ do { Stmt ; } while(0); return; })
+#define defer(Stmt) auto _impl_defer_concat_counter(_defer_) = ::core::defer_implementation::make_deferred([&](){ do { Stmt ; } while(0); return; })
 }
 
 //// Memory primitives
