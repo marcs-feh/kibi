@@ -2,7 +2,8 @@
 
 #include "core/core.hpp"
 
-using namespace core; // TODO: Remove
+namespace kibi {
+using namespace core;
 
 enum class TokenType : i32 {
 	Unknown = 0,
@@ -43,6 +44,11 @@ enum class TokenType : i32 {
 	NotEqual,
 
 	Assign,
+	ArrowRight,
+	Dot,
+	Colon,
+	Semicolon,
+	Comma,
 
 	PlusAssign,
 	MinusAssign,
@@ -53,15 +59,58 @@ enum class TokenType : i32 {
 	AndAssign,
 	OrAssign,
 
-	ArrowRight,
+	True,
+	False,
+	Fn,
+	Let,
+	Const,
+	Struct,
+	If,
+	Else,
+	Return,
+	For,
+	Break,
+	Continue,
+	Match,
 
-	True, False,
-
+	LineComment,
 	EndOfFile,
 };
 
+struct Token {
+	String lexeme;
+	TokenType type;
+	i64 offset;
 
-constexpr String token_type_name(TokenType t){
+	Token() : lexeme{""}, type{0}, offset{0}{}
+};
+
+struct Lexer {
+	i64 current;
+	i64 previous;
+	Slice<byte> source;
+
+	rune advance();
+
+	bool advance_matching(rune desired);
+
+	void rewind();
+
+	rune peek();
+
+	Token make_token(TokenType t);
+
+	Token next();
+
+	Token consume_line_comment();
+
+	static Lexer create(String source);
+
+	Lexer() : current{0}, previous{0}, source{} {}
+};
+
+constexpr static inline
+String token_type_name(TokenType t){
 	using T = TokenType;
 
 	switch(t){
@@ -103,6 +152,10 @@ constexpr String token_type_name(TokenType t){
 
 	case T::Assign: return "=";
 	case T::ArrowRight: return "->";
+	case T::Dot: return ".";
+	case T::Colon: return ":";
+	case T::Semicolon: return ";";
+	case T::Comma: return ",";
 
 	case T::LogicNot: return "!";
 	case T::LogicAnd: return "&&";
@@ -114,41 +167,21 @@ constexpr String token_type_name(TokenType t){
 	case T::Equal: return "==";
 	case T::NotEqual: return "!=";
 
+	case T::Fn: return "fn";
+	case T::Let: return "let";
+	case T::Const: return "const";
+	case T::Struct: return "struct";
+	case T::If: return "if";
+	case T::Else: return "else";
+	case T::Return: return "return";
+	case T::For: return "for";
+	case T::Break: return "break";
+	case T::Continue: return "continue";
+	case T::Match: return "match";
+
 	case T::EndOfFile: return "<EOF>";
 	}
 
 	panic("Unknown token type");
 };
-
-struct Token {
-	String lexeme;
-	TokenType type;
-	i64 offset;
-
-	Token() : lexeme{""}, type{0}, offset{0}{}
-};
-
-struct Lexer {
-	i64 current;
-	i64 previous;
-	Slice<byte> source;
-
-	rune advance();
-
-	bool advance_matching(rune desired);
-
-	void rewind();
-
-	rune peek();
-
-	Token make_token(TokenType t);
-
-	Token next();
-
-	Token consume_line_comment(){ panic("unimplemented"); }
-
-	static Lexer create(String source);
-
-	Lexer() : current{0}, previous{0}, source{} {}
-};
-
+}

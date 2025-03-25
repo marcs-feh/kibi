@@ -4,13 +4,6 @@
 namespace core {
 
 //// Memory
-void mem_set(void* p, byte val, isize count);
-
-void mem_copy(void* dest, void const* source, isize count);
-
-void mem_copy_no_overlap(void* dest, void const* source, isize count);
-
-i32 mem_compare(void const* lhs, void const* rhs, isize count);
 
 static inline
 bool mem_valid_alignment(isize align){

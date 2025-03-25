@@ -2,69 +2,156 @@
 #include "core/memory.hpp"
 #include "lexer.hpp"
 
-using namespace core;
+namespace kibi {
+Lexer Lexer::create(String source){
+	Lexer lex;
+	lex.source = source.raw_bytes();
+	return lex;
+}
 
+rune Lexer::peek(){
+	if(current >= source.len()){ return 0; }
+	auto [codepoint, _] = utf8_decode(source[{current, source.len()}]);
+	return codepoint;
+}
 
-Slice<Pair<String, TokenType>> lexer_operator_table(){
-	static bool sorted = false;
-	using T = TokenType;
-
-	static Pair<String, TokenType> _lexer_operators[] = {
-		{"(", T::ParenOpen},
-		{")", T::ParenClose},
-		{"[", T::SquareOpen},
-		{"]", T::SquareClose},
-		{"{", T::CurlyOpen},
-		{"}", T::CurlyClose},
-
-		{"+", T::Plus},
-		{"-", T::Minus},
-		{"*", T::Star},
-		{"/", T::Slash},
-		{"%", T::Mod},
-		{"&", T::And},
-		{"|", T::Or},
-		{"~", T::Tilde},
-		{">>", T::ShiftRight},
-		{"<<", T::ShiftLeft},
-
-		{"&&", T::LogicAnd},
-		{"||", T::LogicOr},
-		{"!", T::LogicNot},
-		{">", T::Greater},
-		{"<", T::Less},
-		{">=", T::GreaterEqual},
-		{"<=", T::LessEqual},
-		{"==", T::Equal},
-		{"!=", T::NotEqual},
-
-		{"=", T:: Assign},
-		{"->", T::ArrowRight},
-
-		{"+=", T::PlusAssign},
-		{"-=", T::MinusAssign},
-		{"*=", T::StarAssign},
-		{"/=", T::SlashAssign},
-		{"%=", T::ModAssign},
-		{"&=", T::AndAssign},
-		{"|=", T::OrAssign},
-	};
-
-	auto operators = Slice(&_lexer_operators[0], sizeof(_lexer_operators) / sizeof(_lexer_operators[0]));
-
-	if(!sorted){
-		sort(operators, [](auto const& lhs, auto const& rhs) -> int {
-			String left = lhs.a;
-			String right = rhs.a;
-
-			int res = - mem_compare(left.data(), right.data(), min(left.len(), right.len()));
-			if(res == 0) {
-				res = right.len() - left.len();
-			}
-			return res;
-		});
-		sorted = true;
+bool Lexer::advance_matching(rune desired){
+	rune c = peek();
+	if(c == desired){
+		current += utf8_rune_size(c);
+		return true;
 	}
 
-	return operators;
+	return false;
 }
+
+rune Lexer::advance(){
+	if(current >= source.len()){ return 0; }
+
+	auto [codepoint, n] = utf8_decode(source[{current, source.len()}]);
+	current += n;
+	return codepoint;
+}
+
+void Lexer::rewind(){
+	if(current <= 0){ return; }
+	current -= 1;
+	while((current != 0) && utf8_is_continuation_byte(source[current])){
+		current -= 1;
+	}
+}
+
+Token Lexer::make_token(TokenType t){
+	Token token;
+	token.type = t;
+	token.lexeme = String::from_bytes(source[{previous, current}]);
+	token.offset = current;
+	return token;
+}
+
+Token Lexer::consume_line_comment(){
+    previous = current;
+
+    for(;;){
+        rune c = advance();
+        if(c == '\n' || c == 0){
+            rewind();
+            break;
+        }
+    }
+    
+    return make_token(TokenType::LineComment);
+}
+
+#define MATCH_NEXT(Char, Expr) if(advance_matching(Char)){ token = (Expr); break; }
+#define MATCH_DEFAULT(Expr) { token = (Expr); break; }
+
+Token Lexer::next(){
+	Token token;
+	previous = current;
+
+	rune c = advance();
+	if(c == 0){
+		return make_token(TokenType::EndOfFile);
+	}
+
+	using T = TokenType;
+	switch(c){
+		case '(':
+			MATCH_DEFAULT(make_token(T::ParenOpen));
+
+		case ')':
+			MATCH_DEFAULT(make_token(T::ParenClose));
+
+		case '[':
+			MATCH_DEFAULT(make_token(T::SquareOpen));
+
+		case ']':
+			MATCH_DEFAULT(make_token(T::SquareClose));
+
+		case '{':
+			MATCH_DEFAULT(make_token(T::CurlyOpen));
+
+		case '}':
+			MATCH_DEFAULT(make_token(T::CurlyClose));
+
+		case '+':
+			MATCH_NEXT('=', make_token(T::PlusAssign));
+			MATCH_DEFAULT(make_token(T::Plus));
+
+		case '.':
+			MATCH_DEFAULT(make_token(T::Dot));
+
+		case '-':
+			MATCH_NEXT('=', make_token(T::MinusAssign));
+			MATCH_NEXT('>', make_token(T::ArrowRight));
+			MATCH_DEFAULT(make_token(T::Minus));
+
+		case '*':
+			MATCH_NEXT('=', make_token(T::StarAssign));
+			MATCH_DEFAULT(make_token(T::Star));
+
+		case '/':
+			MATCH_NEXT('/', consume_line_comment());
+			MATCH_NEXT('=', make_token(T::SlashAssign));
+			MATCH_DEFAULT(make_token(T::Slash));
+
+		case '%':
+			MATCH_NEXT('=', make_token(T::ModAssign));
+			MATCH_DEFAULT(make_token(T::Mod));
+
+		case '>':
+			MATCH_NEXT('>', make_token(T::ShiftRight));
+			MATCH_NEXT('=', make_token(T::GreaterEqual));
+			MATCH_DEFAULT(make_token(T::Greater));
+
+		case '<':
+			MATCH_NEXT('<', make_token(T::ShiftLeft));
+			MATCH_NEXT('=', make_token(T::LessEqual));
+			MATCH_DEFAULT(make_token(T::Less));
+
+		case '&':
+			MATCH_NEXT('=', make_token(T::AndAssign));
+			MATCH_NEXT('&', make_token(T::LogicAnd));
+			MATCH_DEFAULT(make_token(T::And));
+
+		case '|':
+			MATCH_NEXT('=', make_token(T::OrAssign));
+			MATCH_NEXT('|', make_token(T::LogicOr));
+			MATCH_DEFAULT(make_token(T::Or));
+
+		case '~':
+			MATCH_DEFAULT(make_token(T::Tilde));
+
+		case '!':
+			MATCH_NEXT('=', make_token(T::NotEqual));
+			MATCH_DEFAULT(make_token(T::LogicNot));
+	}
+
+	return token;
+}
+
+#undef MATCH_NEXT
+#undef MATCH_DEFAULT
+
+} /* Namespace */
