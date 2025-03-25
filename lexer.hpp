@@ -2,7 +2,7 @@
 
 #include "core/core.hpp"
 
-namespace kibi {
+namespace kielo {
 using namespace core;
 
 enum class TokenType : i32 {

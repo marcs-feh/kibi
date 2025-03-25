@@ -5,7 +5,6 @@
 #include "lexer.hpp"
 
 using core::String, core::Slice, core::isize;
-using kibi::Lexer, kibi::Token, kibi::TokenType;
 
 std::ostream& operator<<(std::ostream& os, String s){
 	os.write(s.data(), s.len());
@@ -22,6 +21,7 @@ std::ostream& operator<<(std::ostream& os, Slice<T> s){
 #include <math.h>
 
 int main(){
+	using namespace kielo;
 	String src =
 		"+-*/%&|~"
 	;

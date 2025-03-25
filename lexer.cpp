@@ -2,7 +2,7 @@
 #include "core/memory.hpp"
 #include "lexer.hpp"
 
-namespace kibi {
+namespace kielo {
 Lexer Lexer::create(String source){
 	Lexer lex;
 	lex.source = source.raw_bytes();
