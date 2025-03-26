@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/core.hpp"
+#include "core/memory.hpp"
 
 namespace kielo {
 using namespace core;

@@ -68,6 +68,19 @@ struct DynamicArray {
 		this->cap_ = new_cap;
 		return true;
 	}
+	
+	void shrink(){
+		resize(len_);
+	}
+
+	Slice<T> get_owned_slice(){
+		shrink();
+		Slice<T> s = Slice<T>(data_, len_);
+		data_ = nullptr;
+		len_ = 0;
+		cap_ = 0;
+		return s;
+	}
 
 	DynamicArray copy(Allocator* allocator)
 		requires CopyConstructible<T>
@@ -85,10 +98,6 @@ struct DynamicArray {
 		}
 
 		return arr;
-	}
-
-	DynamicArray copy(){
-		return this->copy(this->allocator_);
 	}
 
 	T& operator[](isize idx){
