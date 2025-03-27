@@ -1,5 +1,6 @@
 #include "core/core.hpp"
 #include "core/memory.hpp"
+#include "core/format.hpp"
 
 #include <iostream>
 #include "lexer.hpp"
@@ -23,116 +24,29 @@ std::ostream& operator<<(std::ostream& os, kielo::Token t){
 	return os;
 }
 
+namespace foo {
+struct Person {
+	char const* name;
+};
+
+core::String format(core::FormattingContext* ctx, Person const& p){
+	return "<>";
+}
+
+}
+
 #define STB_SPRINTF_IMPLEMENTATION
 #include "core/wip/stb_sprintf.h"
 
 using namespace core;
 
 
-[[nodiscard]]
-String format_float(Slice<byte> buf, f64 val, i32 precision = 4, i32 left_pad = 0){
-	constexpr char const* float_fmt = "%*.*f";
-
-	isize len = stbsp_snprintf((char*)buf.data(), buf.len(), float_fmt, (int)left_pad, (int)precision, val);
-
-	return String::from_bytes(buf[{0, len}]);
-}
-
-[[nodiscard]]
-String format_string(Slice<byte> buf, String s, i32 left_pad = 0){
-	constexpr char const* str_fmt = "%*.*s";
-
-	isize len = stbsp_snprintf((char*)buf.data(), buf.len(), str_fmt, (int)left_pad, (int)s.len(), s.data());
-
-	return String::from_bytes(buf[{0, len}]);
-}
-
-[[nodiscard]]
-String format_bool(Slice<byte> buf, bool val){
-	char const* fmt = nullptr;
-	isize len = 0;
-
-	if(val){
-		fmt = "true";
-		len = sizeof("true");
-	} else {
-		fmt = "false";
-		len = sizeof("false");
-	}
-
-	len = min(buf.len(), len);
-	mem_copy(buf.data(), fmt, len);
-	return String::from_bytes(buf[{0, len}]);
-}
-
-enum class FormattingFlag {
-	PadWithZeros       = (1 << 0),
-	ScientificNotation = (1 << 1),
-	SeparateDigits     = (1 << 2),
-};
-
-struct FormattingContext {
-	Slice<byte> buffer;
-	i32 left_pad;
-	i32 base;
-	i32 max_width;
-	i32 precision;
-	u8 flags; /* Bitset of FormattingFlag */
-};
-
-[[nodiscard]]
-String format(FormattingContext* ctx, i64 const& val){
-	bool pad_with_zero = u8(ctx->flags) & u8(FormattingFlag::PadWithZeros);
-
-	constexpr char const* hex_fmt = "%*llx";
-	constexpr char const* dec_fmt = "%*lld";
-	constexpr char const* oct_fmt = "%*lld";
-	constexpr char const* bin_fmt = "%*llb";
-
-	constexpr char const* hex_fmt_z = "%0*llx";
-	constexpr char const* dec_fmt_z = "%0*lld";
-	constexpr char const* oct_fmt_z = "%0*lld";
-	constexpr char const* bin_fmt_z = "%0*llb";
-	char const* fmt = nullptr;
-
-	if(pad_with_zero){
-		switch (ctx->base) {
-			case 16: fmt = hex_fmt_z; break;
-			case 10: fmt = dec_fmt_z; break;
-			case 8:  fmt = oct_fmt_z; break;
-			case 2:  fmt = bin_fmt_z; break;
-		}
-	}
-	else {
-		switch (ctx->base) {
-			case 16: fmt = hex_fmt; break;
-			case 10: fmt = dec_fmt; break;
-			case 8:  fmt = oct_fmt; break;
-			case 2:  fmt = bin_fmt; break;
-		}
-	}
-
-	isize len = 0;
-	auto buf = ctx->buffer;
-	if(fmt != nullptr){
-		len = stbsp_snprintf((char*)buf.data(), buf.len(), fmt, (int)ctx->left_pad, (long long)val);
-	}
-	else {
-		len = stbsp_snprintf((char*)buf.data(), buf.len(), "!< INVALID BASE: %d >", ctx->base);
-	}
-	return String::from_bytes(buf[{0, len}]);
-}
-
-template<typename T>
-concept Formattable = requires(FormattingContext* ctx, T const& obj){
-	{ format(ctx, obj) } -> ConvertibleTo<String>;
-};
-
 int main(){
 	auto buf = heap_allocator()->make<byte>(512);
-	auto s = format_bool(buf, true);
-	std::cout << s << "...\n";
-	static_assert(Formattable<i64>);
+	// auto s = format(buf, true);
+	// std::cout << s << "...\n";
+	static_assert(Formattable<foo::Person>);
+	
 
 	// using namespace kielo;
 	// String src =
