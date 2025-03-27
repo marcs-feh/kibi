@@ -76,29 +76,8 @@ int main(){
 		t.join();
 	}
 
-	// auto s = format(buf, true);
-	// std::cout << s << "...\n";
-	auto arena = Arena::create(buf);
-	auto sb = StringBuilder::create(&arena);
+	print("Hello");
 
-	sb.append("Hello");
-	std::cout << sb.build() << '\n';
-	std::cout << sb.build() << '\n';
 
-	// using namespace kielo;
-	// String src =
-	// 	"fn main(){\n"
-	// 	"  let x: f32 = (6 + 4) / 2;\n"
-	// 	"}\n"
-	// ;
-
-	// auto lex = Lexer::create(src);
-
-	// for(auto token = lex.next().or_else({});
-	// 	token.type != TokenType::EndOfFile;
-	// 	token = lex.next().or_else({}))
-	// {
-	// 	std::cout << token << std::endl;
-	// }
 }
 

@@ -1,10 +1,9 @@
+#pragma once
 #include "core.hpp"
 #include "memory.hpp"
 #include "dynamic_array.hpp"
 
 namespace core {
-
-// struct BuilderStream : Stream {};
 
 struct StringBuilder {
     DynamicArray<byte> buf;

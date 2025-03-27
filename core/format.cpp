@@ -1,4 +1,6 @@
 #include "format.hpp"
+#define STB_SPRINTF_IMPLEMENTATION
+#include "wip/stb_sprintf.h"
 
 namespace core {
 

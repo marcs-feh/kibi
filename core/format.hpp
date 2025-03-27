@@ -1,6 +1,6 @@
 #pragma once
 #include "core.hpp"
-#include "wip/stb_sprintf.h"
+#include "string_builder.hpp"
 
 namespace core {
 
@@ -11,7 +11,7 @@ enum class FormattingFlag {
 };
 
 struct FormattingContext {
-	Slice<byte> buffer;
+	StringBuilder* buffer;
 	i32 left_pad;
 	i32 base;
 	i32 max_width;
