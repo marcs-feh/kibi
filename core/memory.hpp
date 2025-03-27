@@ -4,7 +4,6 @@
 namespace core {
 
 //// Memory
-
 static inline
 bool mem_valid_alignment(isize align){
 	return align && ((align & (align - 1)) == 0);
@@ -102,6 +101,40 @@ struct Arena : Allocator {
 	void free_all() override;
 
 	static Arena create(Slice<byte> buf);
+
+	Arena* drop(){
+		free_all();
+		return this;
+	}
+
+	~Arena(){
+		drop();
+	}
+
+	Arena()
+		: data{nullptr}
+		, offset{0}
+		, capacity{0}
+		, last_allocation{0}
+		, region_count{0} {}
+	
+	Arena(Arena const&) = delete;
+
+	Arena(Arena&& a)
+		: data{core::exchange(a.data, nullptr)}
+		, offset{core::exchange(a.offset, 0)}
+		, capacity{core::exchange(a.capacity, 0)}
+		, last_allocation{core::exchange(a.last_allocation, nullptr)}
+		, region_count{0}
+	{
+		ensure(a.region_count == 0, "Moved arena still has dangling regions");
+	}
+
+	Arena& operator=(Arena&& a){
+		return *new (this->drop()) Arena { core::move(a) };
+	}
+
+
 };
 
 //// Heap allocator

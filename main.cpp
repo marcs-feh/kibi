@@ -2,6 +2,7 @@
 #include "core/memory.hpp"
 #include "core/format.hpp"
 #include "core/dynamic_array.hpp"
+#include "core/string_builder.hpp"
 
 #include <iostream>
 #include "lexer.hpp"
@@ -40,22 +41,16 @@ core::String format(core::FormattingContext* ctx, Person const& p){
 
 using namespace core;
 
-
 int main(){
 	auto buf = heap_allocator()->make<byte>(512);
 	// auto s = format(buf, true);
 	// std::cout << s << "...\n";
-	auto arr = DynamicArray<f32>::create(heap_allocator(), 8);
-	auto nums = heap_allocator()->make<f32>(32);
-	for(isize i = 0; i < nums.len(); i++){
-		nums[i] = i;
-	}
+	auto arena = Arena::create(buf);
+	auto sb = StringBuilder::create(&arena);
 
-	arr.append(nums);
-	std::cout << arr.slice() << '\n';
-	
-	arr.append(nums[{0, 16}]);
-	std::cout << arr.slice() << '\n';
+	sb.append("Hello");
+	std::cout << sb.build() << '\n';
+	std::cout << sb.build() << '\n';
 
 	// using namespace kielo;
 	// String src =

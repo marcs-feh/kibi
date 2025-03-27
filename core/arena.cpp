@@ -35,6 +35,9 @@ void* Arena::alloc(isize size, isize align){
 }
 
 void* Arena::realloc(void* old_ptr, isize old_size, isize new_size, isize align){
+	if(old_ptr == nullptr){
+		return this->alloc(new_size, align);
+	}
 	bool ok = this->resize_in_place(old_ptr, new_size);
 
 	if(ok){

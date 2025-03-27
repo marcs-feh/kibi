@@ -11,22 +11,45 @@ struct StringBuilder {
 
     static constexpr isize default_capacity = 16;
 
-    bool append(String s);
+    isize append(String s){
+		auto old_len = buf.len();
+		buf.append(s.raw_bytes());
+		return buf.len() - old_len;
+	}
 
-    bool append(rune r);
+    isize append(rune r){
+		auto [bytes, n] = utf8_encode(r);
+		auto s = Slice<byte>(&bytes[0], n);
+		auto old_len = buf.len();
+		buf.append(s);
+		return buf.len() - old_len;
+	}
 
-    bool append(byte b);
+    isize append(byte b){
+		auto old_len = buf.len();
+		buf.append(b);
+		return buf.len() - old_len;
+	}
 
-    bool append(i64 n);
-    
-    bool append(f64 n);
+    isize append(Slice<byte> b){
+		auto old_len = buf.len();
+		buf.append(b);
+		return buf.len() - old_len;
+	}
 
+	[[nodiscard]]
     String build(){
         auto bytes = buf.get_owned_slice();
         return String::from_bytes(bytes);
     }
 
-    String build_copy(Allocator* allocator);
+    String build_copy(Allocator* allocator){
+		auto out = allocator->make<byte>(buf.len());
+		if(out.data() != nullptr){
+			mem_copy_no_overlap(out.data(), buf.data(), buf.len());
+		}
+		return String::from_bytes(out);
+	}
     
     [[nodiscard]]
     static StringBuilder create(Allocator* allocator, isize initial_cap = default_capacity){
@@ -56,6 +79,5 @@ struct StringBuilder {
     }
 
     ~StringBuilder(){ drop(); }
-
 };
 };
