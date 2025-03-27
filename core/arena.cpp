@@ -86,6 +86,7 @@ ArenaRegion ArenaRegion::create(Arena* arena){
 	ArenaRegion reg;
 	reg.arena = arena;
 	reg.offset = arena->offset;
+	arena->region_count += 1;
 	return reg;
 }
 

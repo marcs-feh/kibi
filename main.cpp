@@ -1,5 +1,6 @@
 #include "core/core.hpp"
 #include "core/memory.hpp"
+#include "core/atomic.hpp"
 #include "core/format.hpp"
 #include "core/dynamic_array.hpp"
 #include "core/string_builder.hpp"
@@ -41,8 +42,40 @@ core::String format(core::FormattingContext* ctx, Person const& p){
 
 using namespace core;
 
+
+Arena* thread_arena(){
+	constexpr isize thread_arena_size = 1 * 1024 * 1024;
+	thread_local byte thread_arena_memory[thread_arena_size];
+	thread_local Arena arena = Arena::create(Slice(&thread_arena_memory[0], thread_arena_size));
+	return &arena;
+}
+
+#include <thread>
+#include <mutex>
+
 int main(){
-	auto buf = heap_allocator()->make<byte>(512);
+	auto buf = thread_arena()->make<byte>(512);
+
+	auto mtx = new std::mutex();
+
+	auto arr = DynamicArray<std::thread>::create(heap_allocator(), 10);
+	for(isize i = 0; i < 10; i++){
+		arr.append(std::thread([=](){
+			mtx->lock();
+			defer(mtx->unlock());
+
+			auto reg = thread_arena()->create_region();
+			defer(reg.release());
+
+			auto p = thread_arena()->make<i32>(64);
+			std::cout << i << "|" << p.data() << ": " << thread_arena()->offset << '\n';
+		}));
+	}
+
+	for(auto& t : arr){
+		t.join();
+	}
+
 	// auto s = format(buf, true);
 	// std::cout << s << "...\n";
 	auto arena = Arena::create(buf);
