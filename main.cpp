@@ -1,9 +1,6 @@
 #include "core/core.hpp"
 #include "core/memory.hpp"
-#include "core/atomic.hpp"
-#include "core/format.hpp"
-#include "core/dynamic_array.hpp"
-#include "core/string_builder.hpp"
+#include "core/print.hpp"
 
 #include <iostream>
 #include "lexer.hpp"
@@ -27,21 +24,7 @@ std::ostream& operator<<(std::ostream& os, kielo::Token t){
 	return os;
 }
 
-namespace foo {
-struct Person {
-	char const* name;
-};
-
-core::String format(core::FormattingContext* ctx, Person const& p){
-	return "<>";
-}
-}
-
-#define STB_SPRINTF_IMPLEMENTATION
-#include "core/wip/stb_sprintf.h"
-
 using namespace core;
-
 
 Arena* thread_arena(){
 	constexpr isize thread_arena_size = 1 * 1024 * 1024;
@@ -50,34 +33,13 @@ Arena* thread_arena(){
 	return &arena;
 }
 
-#include <thread>
-#include <mutex>
-
 int main(){
 	auto buf = thread_arena()->make<byte>(512);
+	auto nums = thread_arena()->make<f64>(30);
+	for(isize i = 0; i < nums.len(); i++)
+		nums[i] = i / 2.0;
 
-	auto mtx = new std::mutex();
-
-	auto arr = DynamicArray<std::thread>::create(heap_allocator(), 10);
-	for(isize i = 0; i < 10; i++){
-		arr.append(std::thread([=](){
-			mtx->lock();
-			defer(mtx->unlock());
-
-			auto reg = thread_arena()->create_region();
-			defer(reg.release());
-
-			auto p = thread_arena()->make<i32>(64);
-			std::cout << i << "|" << p.data() << ": " << thread_arena()->offset << '\n';
-		}));
-	}
-
-	for(auto& t : arr){
-		t.join();
-	}
-
-	print("Hello");
-
-
+	print("Nums:", nums, "Skibidi");
+	// std::cout << into_string(nums, buf).unwrap() << '\n';
 }
 

@@ -6,46 +6,78 @@
 namespace core {
 
 struct StringBuilder {
-    DynamicArray<byte> buf;
+    byte* data;
+	isize len;
+	isize cap;
+	Allocator* allocator;
 
     static constexpr isize default_capacity = 16;
 
-    isize append(String s){
-		auto old_len = buf.len();
-		buf.append(s.raw_bytes());
-		return buf.len() - old_len;
+	bool resize(isize new_cap){
+		auto p = allocator->realloc(data, new_cap, len, alignof(byte));
+		if(p == nullptr){ return false; }
+		data = (byte*)p;
+		cap = new_cap;
+		len = min(len, new_cap);
+		return true;
 	}
 
-    isize append(rune r){
-		auto [bytes, n] = utf8_encode(r);
-		auto s = Slice<byte>(&bytes[0], n);
-		auto old_len = buf.len();
-		buf.append(s);
-		return buf.len() - old_len;
-	}
-
-    isize append(byte b){
-		auto old_len = buf.len();
-		buf.append(b);
-		return buf.len() - old_len;
+	void expand(isize new_len){
+		ensure(new_len >= len, "Not expanding");
+		if(new_len >= cap){
+			if(!resize(new_len)){ return; }
+		}
+		len = new_len;
 	}
 
     isize append(Slice<byte> b){
-		auto old_len = buf.len();
-		buf.append(b);
-		return buf.len() - old_len;
+		if((len + b.len()) >= cap){
+			auto ok = resize(max<isize>(16, len * 2));
+			if(!ok){ return 0; }
+		}
+
+		mem_copy_no_overlap(&data[len], b.data(), b.len());
+		len += b.len();
+		return b.len();
+	}
+
+	isize append(String s){
+		return append(s.raw_bytes());
+	}
+
+	StringBuilder* drop(){
+		allocator->free(data, cap, alignof(byte));
+		return this;
+	}
+
+	void pop(isize count){
+		len = max(len - count, isize(0));
+	}
+
+	isize append(byte b){
+		if(len >= cap){
+			auto ok = resize(max<isize>(16, len * 2));
+			if(!ok){ return 0; }
+		}
+		len += 1;
+		data[len] = b;
+		return 1;
 	}
 
 	[[nodiscard]]
     String build(){
-        auto bytes = buf.get_owned_slice();
+		resize(len);
+		auto bytes = Slice<byte>(data, len);
+		data = nullptr;
+		len = 0;
+		cap = 0;
         return String::from_bytes(bytes);
     }
 
     String build_copy(Allocator* allocator){
-		auto out = allocator->make<byte>(buf.len());
+		auto out = allocator->make<byte>(len);
 		if(out.data() != nullptr){
-			mem_copy_no_overlap(out.data(), buf.data(), buf.len());
+			mem_copy_no_overlap(out.data(), data, len);
 		}
 		return String::from_bytes(out);
 	}
@@ -53,30 +85,32 @@ struct StringBuilder {
     [[nodiscard]]
     static StringBuilder create(Allocator* allocator, isize initial_cap = default_capacity){
         StringBuilder sb;
-        sb.buf = DynamicArray<byte>::create(allocator, initial_cap);
+		sb.allocator = allocator;
+        sb.data = (byte*)allocator->alloc(initial_cap, alignof(byte));
         return sb;
     }
 
-    StringBuilder copy(Allocator* allocator){
-        StringBuilder sb;
-        sb.buf = buf.copy(allocator);
-        return sb;
-    }
+	Slice<byte> slice(){
+		return Slice<byte>(data, len);
+	}
 
-    StringBuilder() : buf{} {}
-
-	StringBuilder* drop(){
-        buf.drop();
-        return this;
-    }
+    StringBuilder()
+		: data{nullptr}
+		, len{0}
+		, cap{0}
+		, allocator{nullptr} {}
 
     StringBuilder(StringBuilder&& sb)
-        : buf{core::move(sb.buf)} {}
+        : data{core::exchange(sb.data, nullptr)}
+		, len{core::exchange(sb.len, 0)}
+		, cap{core::exchange(sb.cap, 0)}
+		, allocator{core::exchange(sb.allocator, nullptr)} {}
     
     StringBuilder& operator=(StringBuilder&& sb){
         return *new (drop()) StringBuilder{ core::move(sb) };
     }
 
     ~StringBuilder(){ drop(); }
+
 };
-};
+}
