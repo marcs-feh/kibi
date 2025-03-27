@@ -17,6 +17,19 @@ struct DynamicArray {
 		this->len_ += 1;
 	}
 
+	void append(Slice<T> elems){
+		if((this->len_ + elems.len()) >= this->cap_){
+			bool ok = this->resize(max(isize(16), elems.len(), this->len_ * 2));
+			if(!ok){ return; }
+		}
+
+		auto loc = (T*)(this->data_ + this->len_);
+		for(isize i = 0; i < elems.len(); i ++){
+			new (loc + i) T(elems[i]);
+		}
+		this->len_ += elems.len();
+	}
+
 	void pop(){
 		if(this->len_ <= 0){ return; }
 
