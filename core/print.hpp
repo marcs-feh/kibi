@@ -35,6 +35,8 @@ Maybe<String> into_string(String v, Slice<byte>);
 
 Maybe<String> into_string(i64 v, Slice<byte> buf);
 
+Maybe<String> into_string(byte v, Slice<byte> buf);
+
 Maybe<String> into_string(uintptr v, Slice<byte> buf);
 
 Maybe<String> into_string(f64 v, Slice<byte> buf);

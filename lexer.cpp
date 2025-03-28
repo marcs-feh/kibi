@@ -1,6 +1,7 @@
 #include "core/core.hpp"
 #include "core/memory.hpp"
 #include "core/dynamic_array.hpp"
+
 #include "lexer.hpp"
 
 namespace kielo {

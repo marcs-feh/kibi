@@ -145,6 +145,8 @@ struct Lexer {
 	Lexer() : current{0}, previous{0}, source{} {}
 };
 
+// Maybe<String> into_string(Token t, Slice<byte> buf){ }
+
 constexpr static inline
 String token_type_name(TokenType t, caller_location(loc)){
 	using T = TokenType;

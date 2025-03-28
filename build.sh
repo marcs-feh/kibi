@@ -1,3 +1,5 @@
+#!/usr/bin/env sh
+
 set -eu
 
 clang++ -Os -std=c++20 -o main.exe \
