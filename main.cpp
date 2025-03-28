@@ -17,20 +17,21 @@ struct ByteBufferStream : Stream {
 		const byte* pos = nullptr;
 
 		switch (whence) {
-		case SeekPos::Start:   pos = start + offset; break;
-		case SeekPos::Current: pos = start + offset + current; break;
-		case SeekPos::End:     pos = end + offset; break;
-		default:
-			return StreamError::InvalidWhence;
+		case SeekPos::Start:   pos = start; break;
+		case SeekPos::Current: pos = start + current; break;
+		case SeekPos::End:     pos = end; break;
+		default: return StreamError::InvalidWhence;
 		}
 
+		pos += offset;
 		if(pos < start || pos >= end){
 			return StreamError::InvalidOffset;
 		}
+
 		isize remaining = end - pos;
 		auto to_read = min(remaining, buf.len());
-
 		mem_copy(buf.data(), pos, to_read);
+
 		current += to_read;
 		return to_read;
 	}
@@ -44,17 +45,18 @@ struct ByteBufferStream : Stream {
 		case SeekPos::Start:   pos = start; break;
 		case SeekPos::Current: pos = start + current; break;
 		case SeekPos::End:     pos = end ; break;
-		default:
-			return StreamError::InvalidWhence;
+		default: return StreamError::InvalidWhence;
 		}
-		pos += offset;
 
+		pos += offset;
 		if(pos < start || pos >= end){
 			return StreamError::InvalidOffset;
 		}
+
 		isize remaining = end - pos;
 		auto to_write = min(remaining, buf.len());
 		mem_copy(pos, buf.data(), to_write);
+
 		current += to_write;
 		return to_write;
 	}
@@ -68,8 +70,8 @@ struct ByteBufferStream : Stream {
 		case SeekPos::End:     pos = data.len(); break;
 		default: return StreamError::InvalidWhence;
 		}
-		pos += offset;
 
+		pos += offset;
 		if(pos < 0 || pos >= data.len()){
 			return StreamError::InvalidOffset;
 		}
@@ -107,7 +109,7 @@ int main(){
 
 	auto buf = thread_arena()->make<byte>(20);
 
-	auto tmp = thread_arena()->make<byte>(5);
+	auto tmp = thread_arena()->make<byte>(100);
 
 	auto bs = ByteBufferStream::create(buf);
 	print(buf);
@@ -116,7 +118,9 @@ int main(){
 	print(buf);
 
 	bs.seek(-2, SeekPos::Start);
-	isize n = bs.read(tmp).or_else(0);
+	isize n = bs.read(tmp).unwrap();
+	print(tmp[{0, n}]);
+	n = bs.read(tmp).unwrap();
 	print(tmp[{0, n}]);
 
 	print("Nums:", nums);
