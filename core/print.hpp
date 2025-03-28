@@ -1,12 +1,13 @@
 #pragma once
 #include "core.hpp"
 #include "memory.hpp"
+#include "stream.hpp"
 
 namespace core {
 constexpr isize print_buffer_size = 2 * 1024 * 1024;
 
 template<typename T>
-concept StringConvertible = requires(T v, Slice<byte> buf){
+concept StringConvertible = requires(T v, ByteBufferStream& buf){
 	{ into_string(v, buf) } -> SameAs<Maybe<String>>;
 };
 
@@ -20,55 +21,61 @@ void print(T const& v, Args const& ... args){
 
 template<StringConvertible T>
 void buf_print(Slice<byte> buf, T const& v){
-	auto s = into_string(v, buf).or_else("!< PRINT ERROR >");
+	auto stream = ByteBufferStream::from(buf);
+	auto s = into_string(v, stream).or_else("!< PRINT ERROR >");
 	printf("%.*s\n", (int)s.len(), (char*)s.data());
 }
 
 template<StringConvertible T, StringConvertible... Args>
 void buf_print(Slice<byte> buf, T const& v, Args const& ... args){
-	auto s = into_string(v, buf).or_else("!< PRINT ERROR >");
+	auto stream = ByteBufferStream::from(buf);
+	auto s = into_string(v, stream).or_else("!< PRINT ERROR >");
 	printf("%.*s ", (int)s.len(), (char*)s.data());
 	buf_print(buf, args...);
 }
 
-Maybe<String> into_string(String v, Slice<byte>);
+Maybe<String> into_string(String v, ByteBufferStream& buf);
 
-Maybe<String> into_string(i64 v, Slice<byte> buf);
+Maybe<String> into_string(i64 v, ByteBufferStream& buf);
 
-Maybe<String> into_string(byte v, Slice<byte> buf);
+Maybe<String> into_string(byte v, ByteBufferStream& buf);
 
-Maybe<String> into_string(uintptr v, Slice<byte> buf);
+Maybe<String> into_string(uintptr v, ByteBufferStream& buf);
 
-Maybe<String> into_string(f64 v, Slice<byte> buf);
+Maybe<String> into_string(f64 v, ByteBufferStream& buf);
 
 template<StringConvertible T>
-Maybe<String> into_string(Slice<T> s, Slice<byte> buf){
-	if(s.len() == 0){ return String("[]"); }
+Maybe<String> into_string(Slice<T> s, ByteBufferStream& buf){
 	if(buf.len() < 4){ return {}; }
+	if(s.len() == 0){
+		return String("[]");
+	}
+	isize restore_point = buf.current;
 
-	isize current = 1;
-	buf[0] = '[';
-	auto remaining = buf[{current, buf.len()}];
-
-	for(auto& e : s){
-		auto res = into_string(e, remaining);
-		if(res.ok()){
-			current += res.unwrap().len();
-		} else {
-			return {};
-		}
-
-		if((current + 1) > buf.len()){ return {}; }
-		current += 1;
-		buf[current - 1] = ' ';
-
-		remaining = buf[{current, buf.len()}];
+	if(!buf.write(String("[").raw_bytes()).ok()){
+		goto error_exit;
 	}
 
-	if(current >= buf.len()){ return {}; }
-	buf[current - 1] = ']';
+	for(auto& e : s){
+		auto res = into_string(e, buf);
+		if(!res.ok()){
+			goto error_exit;
+		}
 
-	return String::from_bytes(buf[{0, current}]);
-}
+		if(!buf.write(String(" ").raw_bytes()).ok()){
+			goto error_exit;
+		}
+	}
 
+	buf.seek(-1, SeekPos::Current);
+	if(!buf.write(String("]").raw_bytes()).ok()){
+		goto error_exit;
+	}
+
+	return String::from_bytes(Slice<byte>(buf.data() + restore_point, restore_point - buf.current));
+
+error_exit:
+	buf.seek(restore_point, SeekPos::Start);
+	return {};
 }
+} /* namespace core */

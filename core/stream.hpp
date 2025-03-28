@@ -34,4 +34,37 @@ struct Stream {
     virtual StreamMode capabilities() = 0;
 };
 
+// Simple stream to operate over byte buffers, useful for building strings and
+// binary payloads with a maximum size.
+struct ByteBufferStream : Stream {
+	Slice<byte> buffer;
+	isize current;
+
+    Result<i64, StreamError> read(Slice<byte> buf, i64 offset = 0, SeekPos whence = SeekPos::Current) override;
+
+    Result<i64, StreamError> write(Slice<byte> buf, i64 offset = 0, SeekPos whence = SeekPos::Current) override;
+
+    Result<i64, StreamError> seek(i64 offset, SeekPos whence) override;
+
+    StreamMode capabilities() override;
+
+	ByteBufferStream()
+		: buffer{}
+		, current{0} {}
+
+	static ByteBufferStream from(Slice<byte> buf){
+		ByteBufferStream bs;
+		bs.buffer = buf;
+		return bs;
+	}
+
+	Slice<byte> operator[](Pair<isize> range){
+		return buffer[range];
+	}
+
+	// Getters
+	[[nodiscard]] constexpr forceinline auto len() const { return buffer.len(); }
+	[[nodiscard]] constexpr forceinline auto data() const { return buffer.data(); }
+};
+
 }
