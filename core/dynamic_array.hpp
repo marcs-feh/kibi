@@ -1,6 +1,7 @@
 #pragma once
 #include "core.hpp"
 #include "memory.hpp"
+#include "stream.hpp"
 
 namespace core {
 //// Dynamic Array
@@ -81,7 +82,7 @@ struct DynamicArray {
 		this->cap_ = new_cap;
 		return true;
 	}
-	
+
 	void shrink(){
 		resize(len_);
 	}
@@ -96,7 +97,7 @@ struct DynamicArray {
 	}
 
 	DynamicArray copy(Allocator* allocator)
-		requires CopyConstructible<T>
+	requires CopyConstructible<T>
 	{
 		auto arr = DynamicArray<T>::create(allocator, this->len_);
 		if(arr.cap_ != this->len_){ return {}; }
@@ -186,4 +187,5 @@ private:
 	isize cap_;
 	Allocator* allocator_;
 };
+
 } /* Universal namespace */

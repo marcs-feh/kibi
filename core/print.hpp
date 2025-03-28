@@ -8,10 +8,16 @@ constexpr isize print_buffer_size = 2 * 1024 * 1024;
 
 template<typename T>
 concept StringConvertible = requires(T v, ByteBufferStream& buf){
-	{ into_string(v, buf) } -> SameAs<Maybe<String>>;
+{ into_string(v, buf) } -> SameAs<Maybe<String>>;
 };
 
 Slice<byte> print_get_temporary_buffer();
+
+isize format_write_i64(Slice<byte> buf, i64 v);
+
+isize format_write_u64(Slice<byte> buf, u64 v);
+
+isize format_write_f64(Slice<byte> buf, f64 v);
 
 template<StringConvertible T, StringConvertible... Args>
 void print(T const& v, Args const& ... args){
@@ -36,13 +42,49 @@ void buf_print(Slice<byte> buf, T const& v, Args const& ... args){
 
 Maybe<String> into_string(String v, ByteBufferStream& buf);
 
-Maybe<String> into_string(i64 v, ByteBufferStream& buf);
+template<typename Int>
+	requires(Signed<Int> && Integral<Int>)
+Maybe<String> into_string(Int v, ByteBufferStream& buf){
+	isize start = buf.current;
 
-Maybe<String> into_string(byte v, ByteBufferStream& buf);
+	auto target = buf[{buf.current, buf.len()}];
+	isize len = format_write_i64(target, v);
+	if(len >= buf.len()){
+		return {};
+	}
+	buf.current += len;
+	return String::from_bytes(buf[{start, start + len}]);
+}
 
-Maybe<String> into_string(uintptr v, ByteBufferStream& buf);
+template<typename Int>
+	requires(!Signed<Int> && Integral<Int>)
+Maybe<String> into_string(Int v, ByteBufferStream& buf){
+	isize start = buf.current;
 
-Maybe<String> into_string(f64 v, ByteBufferStream& buf);
+	auto target = buf[{buf.current, buf.len()}];
+	isize len = format_write_u64(target, v);
+	if(len >= buf.len()){
+		return {};
+	}
+	buf.current += len;
+	return String::from_bytes(buf[{start, start + len}]);
+}
+
+Maybe<String> into_string(FloatingPoint auto v, ByteBufferStream& buf){
+	isize start = buf.current;
+	auto target = buf[{buf.current, buf.len()}];
+	isize len = format_write_f64(target, v);
+	if(len >= buf.len()){
+		return {};
+	}
+	buf.current += len;
+	return String::from_bytes(buf[{start, start + len}]);
+}
+
+Maybe<String> into_string(void const* v, ByteBufferStream& buf);
+
+template<Integral T>
+struct HexInteger { T value; };
 
 template<StringConvertible T>
 Maybe<String> into_string(Slice<T> s, ByteBufferStream& buf){

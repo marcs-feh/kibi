@@ -8,7 +8,7 @@ struct Identity {
 
 template<typename T>
 concept Referenceable = requires {
-	typename Identity<T&>;
+typename Identity<T&>;
 };
 
 template<typename A, typename B>
@@ -21,43 +21,28 @@ template<typename A, typename B>
 concept SameAs = is_same_type<A, B>;
 
 template<typename T, typename ...Args>
-concept Constructible =
-	#if defined(COMPILER_CLANG) || defined(COMPILER_GCC) || defined(COMPILER_MSVC)
-		__is_constructible(T, Args...)
-	#else
-		#error "Compiler not supported, could not find a builtin to detect if type is constructible"
-	#endif
-;
+concept Constructible = __is_constructible(T, Args...) ;
 
 template<typename T>
-concept TriviallyConstructible =
-		 __is_trivially_constructible(T)
-	// #elif __has_builtin(__has_trivial_constructor)
-	// 	__has_trivial_constructor(T)
-	// #else
-	// 	#error "Compiler not supported, could not find a builtin to detect if type is trivially constructible"
-	// #endif
-;
+concept TriviallyConstructible = __is_trivially_constructible(T) ;
 
 template<typename T>
-concept TriviallyDestructible =
-	// #if __has_builtin(__is_trivially_destructible)
-			__is_trivially_destructible(T);
-	// #elif __has_builtin(__has_trivial_destructor)
-		// __has_trivial_destructor(T);
-	// #else
-	// 	#error "Compiler not supported, could not find a builtin to detect if type is trivially destructible"
-	// #endif
-;
+concept TriviallyDestructible = __is_trivially_destructible(T); ;
 
 template<typename T>
-concept TriviallyCopyable =
-	// #if __has_builtin(__is_trivially_copyable)
-		__is_trivially_copyable(T)
-	// #else
-	// 	#error "Compiler not supported, could not find a builtin to detect if type is trivially copyable"
-	// #endif
-;
+concept TriviallyCopyable = __is_trivially_copyable(T) ;
+
+template<typename T>
+concept Integral = __is_integral(T) ;
+
+template<typename T>
+concept FloatingPoint = __is_floating_point(T) ;
+
+template<typename T>
+concept Signed = __is_signed(T);
+
+template<typename T>
+concept Scalar = FloatingPoint<T> || Integral<T>;
 
 template<typename T>
 concept Destructible = requires(T obj){
@@ -67,6 +52,7 @@ concept Destructible = requires(T obj){
 template<typename T, typename ...Args>
 concept ConstructibleFrom = Destructible<T> && Constructible<T, Args...>;
 
+
 template<typename T>
 concept DefaultInitalizable = requires {
 	T{};
@@ -75,7 +61,7 @@ concept DefaultInitalizable = requires {
 
 template<typename From, typename To>
 concept ConvertibleTo = requires(From v) {
-	static_cast<To>(v);
+static_cast<To>(v);
 };
 
 namespace meta_implementation {

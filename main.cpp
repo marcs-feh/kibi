@@ -2,6 +2,7 @@
 #include "core/memory.hpp"
 #include "core/print.hpp"
 #include "core/stream.hpp"
+#include "core/dynamic_array.hpp"
 
 #include "lexer.hpp"
 
@@ -15,11 +16,13 @@ Arena* thread_arena(){
 }
 
 int main(){
-	auto nums = thread_arena()->make<f64>(30);
+	auto nums = thread_arena()->make<u64>(30);
 	for(isize i = 0; i < nums.len(); i++){
 		nums[i] = i;
 	}
-	print(nums);
+	auto arr = DynamicArray<i64>::create(thread_arena(), 100);
+
+	print(nums, arr.slice(), nums);
 
 	// auto buf = thread_arena()->make<byte>(20);
 
